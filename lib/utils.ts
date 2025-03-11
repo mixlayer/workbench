@@ -4,3 +4,25 @@ import { twMerge } from 'tailwind-merge';
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export enum RunState {
+  Ready,
+  Queued,
+  Generating,
+  Error,
+}
+
+export interface TextOutputPart {
+  text: string;
+  hidden: boolean;
+  stream: string;
+  type: 'text';
+}
+
+export interface ErrorOutputPart {
+  message: string;
+  stream: string;
+  type: 'error';
+}
+
+export type OutputPart = TextOutputPart | ErrorOutputPart;
