@@ -21,7 +21,7 @@ function messagesJson(chat: MxlChat) {
   });
 }
 
-export function WorkbenchChat() {
+export function WorkbenchChat(props: { className?: string }) {
   const [currentChat, setCurrentChat] = useState<MxlChat>({
     name: 'Chat',
     turns: [],
@@ -168,7 +168,7 @@ export function WorkbenchChat() {
   }, [currentChat.runState, currentTurn, currentChat]);
 
   return (
-    <div className="w-full h-full flex justify-center">
+    <div className={`w-full h-full flex justify-center ${props.className}`}>
       <div className="w-full h-full max-w-[640px] flex flex-col">
         <div
           className="flex-1 flex flex-col mx-4 pt-3 overflow-scroll min-h-0 max-h-[calc(100vh-var(--input-min-height)-110px)]"

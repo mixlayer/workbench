@@ -13,7 +13,7 @@ import { SplittableOutputPane } from './splittable';
 import SSE, { connect } from '@/lib/sse';
 import { Console } from './console';
 
-export function WorkbenchDev() {
+export function WorkbenchDev(props: { className?: string }) {
   const [params, setParams] = useState('{\n}');
   const [runState, setRunState] = useState(RunState.Ready);
   const [outputParts, setOutputParts] = useState<OutputPart[]>([]);
@@ -93,7 +93,7 @@ export function WorkbenchDev() {
   }, []);
 
   return (
-    <div className="flex w-full h-full">
+    <div className={`flex w-full h-full ${props.className}`}>
       <div className="flex-1 bg-gray-50 py-1 pr-1">
         <PanelGroup direction="horizontal">
           <Panel className="p-0.5 pr-1">

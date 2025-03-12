@@ -30,11 +30,12 @@ const App = () => {
         <div className="h-full">
           {/* <AppSidebar className="top-[var(--header-height)] h-[calc(100vh-var(--header-height))]" /> */}
           <SidebarInset className="h-full">
-            {workbenchMode == WorkbenchMode.Chat ? (
-              <WorkbenchChat />
-            ) : (
-              <WorkbenchDev />
-            )}
+            <WorkbenchChat
+              className={`${workbenchMode == WorkbenchMode.Chat ? 'block' : 'hidden'}`}
+            />
+            <WorkbenchDev
+              className={`${workbenchMode == WorkbenchMode.Developer ? 'block' : 'hidden'}`}
+            />
           </SidebarInset>
         </div>
       </div>
