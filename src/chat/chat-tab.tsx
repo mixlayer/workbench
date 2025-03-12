@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChatMessages } from './ChatMessages';
-import { InputBox } from './InputBox';
+import { ChatMessages } from './chat-messages';
+import { InputBox } from './input-box';
 import { appRequest } from '@/lib/eventsource';
 import { MxlChat, MxlChatTurn } from '@/lib/request';
 import { OutputPart, RunState } from '@/lib/utils';

@@ -1,12 +1,7 @@
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
-// import { AppSidebar } from './AppSidebar';
-import { WorkbenchMode, WorkbenchModeTabs } from './WorkbenchTabs';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { WorkbenchMode, WorkbenchModeTabs } from './tabs';
 import React from 'react';
-import { WorkbenchChat } from './chat/WorkbenchChat';
+import { WorkbenchChat } from './chat/chat-tab';
 import { WorkbenchDev } from './dev/developer-tab';
 
 const App = () => {
@@ -24,8 +19,6 @@ const App = () => {
     >
       <div className="flex flex-col w-full h-screen">
         <header className="flex w-full h-[var(--header-height)] shrink-0 items-center gap-2 px-4 border-b border-gray-100">
-          <SidebarTrigger className="-ml-1" />
-          {/* <Separator orientation="vertical" className="mr-2 h-4" /> */}
           <div className="flex-1"></div>
           <WorkbenchModeTabs
             value={workbenchMode}
