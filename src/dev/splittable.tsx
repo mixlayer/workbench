@@ -23,19 +23,16 @@ export interface SplitPane {
 export type OutputPaneType = StreamPane | SplitPane;
 
 export function SplittableOutputPane(props: {
-  initialLayout?: OutputPaneType;
   outputParts: OutputPart[];
   streams: string[];
   onCloseClick?: () => void;
 }) {
-  const { outputParts, initialLayout, streams } = props;
+  const { outputParts, streams } = props;
 
-  const [layout, setLayout] = useState<OutputPaneType>(
-    initialLayout ?? {
-      kind: 'stream',
-      stream: '0',
-    },
-  );
+  const [layout, setLayout] = useState<OutputPaneType>({
+    kind: 'stream',
+    stream: '0',
+  });
 
   const closeLeft = () => {
     setLayout((old) => {
@@ -59,23 +56,19 @@ export function SplittableOutputPane(props: {
 
   const onSplitClick = useCallback(
     (direction: SplitDirection) => {
-      setLayout((old) => {
-        if (old.kind === 'stream') {
-          const newPane: OutputPaneType = {
-            kind: 'split',
-            direction,
-            left: old,
-            right: {
-              kind: 'stream',
-              stream: '1',
-            },
-          };
+      if (layout.kind === 'stream') {
+        const newPane: OutputPaneType = {
+          kind: 'split',
+          direction,
+          left: layout,
+          right: {
+            kind: 'stream',
+            stream: '1',
+          },
+        };
 
-          return newPane;
-        }
-
-        throw new Error('invalid layout for split');
-      });
+        setLayout(newPane);
+      }
     },
     [layout],
   );
@@ -99,7 +92,6 @@ export function SplittableOutputPane(props: {
         <Panel className={paneAPad}>
           <SplittableOutputPane
             streams={streams}
-            initialLayout={layout.left}
             onCloseClick={closeLeft}
             outputParts={outputParts}
           />
@@ -108,7 +100,6 @@ export function SplittableOutputPane(props: {
         <Panel className={paneBPad}>
           <SplittableOutputPane
             streams={streams}
-            initialLayout={layout.right}
             onCloseClick={closeRight}
             outputParts={outputParts}
           />
