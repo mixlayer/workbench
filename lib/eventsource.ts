@@ -73,6 +73,7 @@ export function appRequest(
     },
     body: JSON.stringify({
       stream: true,
+      hidden: true,
       params,
     }),
   });

@@ -7,7 +7,7 @@ import {
 import { WorkbenchMode, WorkbenchModeTabs } from './WorkbenchTabs';
 import React from 'react';
 import { WorkbenchChat } from './chat/WorkbenchChat';
-import { WorkbenchDev } from './dev/WorkbenchDev';
+import { WorkbenchDev } from './dev/developer-tab';
 
 const App = () => {
   const [workbenchMode, setWorkbenchMode] = React.useState<WorkbenchMode>(
