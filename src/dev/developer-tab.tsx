@@ -13,7 +13,7 @@ import { SplittableOutputPane } from './splittable';
 import SSE, { connect } from '@/lib/sse';
 import { Console } from './console';
 
-export function WorkbenchDev(props: { className?: string }) {
+export function DeveloperTab(props: { className?: string }) {
   const [params, setParams] = useState('{\n}');
   const [runState, setRunState] = useState(RunState.Ready);
   const [outputParts, setOutputParts] = useState<OutputPart[]>([]);

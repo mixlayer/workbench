@@ -1,8 +1,8 @@
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { WorkbenchMode, WorkbenchModeTabs } from './tabs';
 import React from 'react';
-import { WorkbenchChat } from './chat/chat-tab';
-import { WorkbenchDev } from './dev/developer-tab';
+import { ChatTab } from './chat/chat-tab';
+import { DeveloperTab } from './dev/developer-tab';
 
 const App = () => {
   const [workbenchMode, setWorkbenchMode] = React.useState<WorkbenchMode>(
@@ -30,10 +30,10 @@ const App = () => {
         <div className="h-full">
           {/* <AppSidebar className="top-[var(--header-height)] h-[calc(100vh-var(--header-height))]" /> */}
           <SidebarInset className="h-full">
-            <WorkbenchChat
+            <ChatTab
               className={`${workbenchMode == WorkbenchMode.Chat ? 'block' : 'hidden'}`}
             />
-            <WorkbenchDev
+            <DeveloperTab
               className={`${workbenchMode == WorkbenchMode.Developer ? 'block' : 'hidden'}`}
             />
           </SidebarInset>

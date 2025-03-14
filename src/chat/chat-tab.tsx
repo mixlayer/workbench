@@ -21,7 +21,7 @@ function messagesJson(chat: MxlChat) {
   });
 }
 
-export function WorkbenchChat(props: { className?: string }) {
+export function ChatTab(props: { className?: string }) {
   const [currentChat, setCurrentChat] = useState<MxlChat>({
     name: 'Chat',
     turns: [],
