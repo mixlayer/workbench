@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { ParamsEditorPane } from './params-pane';
 import {
   ErrorOutputPart,
@@ -17,6 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const RUN_URL = 'http://localhost:8484/';
 
+//TODO state management here is a mess, need to refactor
 export function DeveloperTab(props: { className?: string }) {
   const [params, setParams] = useState('{\n}');
   const [runState, setRunState] = useState(RunState.Ready);
@@ -28,6 +29,21 @@ export function DeveloperTab(props: { className?: string }) {
   const [currentChatTurn, setCurrentChatTurn] = useState<MxlChatTurn | null>(
     null,
   );
+
+  // Add a ref to track the latest currentChatTurn
+  const currentChatTurnRef = useRef<MxlChatTurn | null>(null);
+
+  // Keep the ref in sync with the state
+  useEffect(() => {
+    currentChatTurnRef.current = currentChatTurn;
+  }, [currentChatTurn]);
+
+  // Move clearOutput declaration before it's used
+  const clearOutput = useCallback(() => {
+    setStreams([]);
+    setOutputParts([]);
+    setConsoleOutput('');
+  }, []);
 
   const onNewChatClick = useCallback(() => {
     setChats((prev) => [
@@ -87,54 +103,70 @@ export function DeveloperTab(props: { className?: string }) {
         return null;
       }
     },
-    [setStreams, setOutputParts, setConsoleOutput],
+    [setStreams, setOutputParts, setConsoleOutput, setRunState, setSseChannel],
   );
 
   const appendOutputToChatTurn = useCallback(
-    (part: OutputPart, done: boolean) => {
-      console.log('onOutput called with part:', part);
+    (part: OutputPart | null, done: boolean) => {
+      console.log(
+        'appendOutputToChatTurn, done = ',
+        done,
+        currentChatTurnRef.current,
+      );
 
-      if (done && currentChatTurn) {
+      // Use the ref to access the latest value
+      if (done && currentChatTurnRef.current) {
         const currentChat = chats.find(
-          (chat) => chat.id === currentChatTurn.chatId,
+          (chat) => chat.id === currentChatTurnRef.current!.chatId,
         );
 
-        if (currentChat && currentChatTurn) {
+        if (currentChat) {
           const nextChat = {
             ...currentChat,
-            turns: [...currentChat.turns, currentChatTurn],
+            turns: [...currentChat.turns, currentChatTurnRef.current!],
           };
 
-          setChats((prev) => [
-            ...prev.filter((chat) => chat.id !== currentChat.id),
-            nextChat,
-          ]);
+          console.log('nextChat = ', nextChat);
+
+          setChats((prevChats) => {
+            const otherChats = prevChats.filter(
+              (chat) => chat.id !== currentChat.id,
+            );
+            console.log('nextChat = ', nextChat);
+            return [...otherChats, nextChat];
+          });
 
           setCurrentChatTurn(null);
+
+          console.log('appending to chat', currentChat.id);
+        } else {
+          console.error('chat not found when appending turn');
         }
 
         return;
       }
 
-      setCurrentChatTurn((prev) => {
-        if (!prev) {
-          return null;
-        }
+      if (part !== null) {
+        setCurrentChatTurn((prev) => {
+          if (!prev) {
+            return null;
+          }
 
-        if (part.type === 'text' && !part.hidden) {
-          return {
-            ...prev,
-            reply: {
-              ...prev.reply,
-              content: prev.reply.content + part.text,
-            },
-          };
-        } else {
-          return prev;
-        }
-      });
+          if (part.type === 'text' && !part.hidden) {
+            return {
+              ...prev,
+              reply: {
+                ...prev.reply,
+                content: prev.reply.content + part.text,
+              },
+            };
+          } else {
+            return prev;
+          }
+        });
+      }
     },
-    [],
+    [chats], // Keep only chats in the dependency array
   );
 
   const sendChatMessage = useCallback(
@@ -177,6 +209,7 @@ export function DeveloperTab(props: { className?: string }) {
 
       setRunState(RunState.Generating);
       setCurrentChatTurn(turn);
+      // The ref will be updated via the useEffect
 
       const sse = connect(
         RUN_URL,
@@ -187,11 +220,9 @@ export function DeveloperTab(props: { className?: string }) {
           },
         },
         (part, done) => {
+          console.log('onSseStreamFrame, done = ', done);
           let outputPart = onSseStreamFrame(part, done);
-
-          if (outputPart !== null) {
-            appendOutputToChatTurn(outputPart, done);
-          }
+          appendOutputToChatTurn(outputPart, done);
         },
         (error) => {
           setRunState(RunState.Error);
@@ -201,7 +232,7 @@ export function DeveloperTab(props: { className?: string }) {
 
       setSseChannel(sse);
     },
-    [chats, sseChannel],
+    [chats, sseChannel, clearOutput, onSseStreamFrame, appendOutputToChatTurn],
   );
 
   const sendModelRequest = useCallback(() => {
@@ -228,12 +259,6 @@ export function DeveloperTab(props: { className?: string }) {
 
     setSseChannel(sse);
   }, [sseChannel]);
-
-  let clearOutput = useCallback(() => {
-    setStreams([]);
-    setOutputParts([]);
-    setConsoleOutput('');
-  }, []);
 
   return (
     <div className={`flex w-full h-full ${props.className}`}>
