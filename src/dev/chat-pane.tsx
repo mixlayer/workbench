@@ -4,6 +4,7 @@ import { SplitDirection } from './splittable';
 import { InputBox } from '../chat/input-box';
 import { ChatMessages } from '../chat/chat-messages';
 import { MxlChat, MxlChatTurn } from '@/lib/request';
+import { useEffect, useRef, useState } from 'react';
 
 export function ChatPane(props: {
   runState: RunState;
@@ -18,8 +19,38 @@ export function ChatPane(props: {
   chatId: string;
   currentTurn: MxlChatTurn | null;
 }) {
-  const chat = props.chats.find((chat) => chat.id === props.chatId);
+  const chatMessagesDiv = useRef<HTMLDivElement>(null);
+  const [autoscroll, setAutoscroll] = useState(true);
 
+  useEffect(() => {
+    if (!chatMessagesDiv.current || !autoscroll) return;
+
+    chatMessagesDiv.current.scrollTop = chatMessagesDiv.current.scrollHeight;
+  }, [chatMessagesDiv.current, props.currentTurn, autoscroll]);
+
+  useEffect(() => {
+    if (!chatMessagesDiv.current) return;
+
+    const div = chatMessagesDiv.current;
+
+    const handleScroll = () => {
+      if (!div) return;
+
+      // Calculate if user is at bottom (with small threshold)
+      const distanceFromBottom =
+        div.scrollHeight - div.scrollTop - div.clientHeight;
+      const isAtBottom = distanceFromBottom < 10;
+      setAutoscroll(isAtBottom);
+    };
+
+    div.addEventListener('scroll', handleScroll);
+
+    return () => {
+      div.removeEventListener('scroll', handleScroll);
+    };
+  }, [chatMessagesDiv]);
+
+  const chat = props.chats.find((chat) => chat.id === props.chatId);
   let chatTurn = null;
 
   if (props.currentTurn && props.currentTurn.chatId == props.chatId) {
@@ -41,11 +72,14 @@ export function ChatPane(props: {
         />
       </div>
 
-      <div className="h-full w-full overflow-y-auto mx-auto">
+      <div
+        ref={chatMessagesDiv}
+        className="h-full w-full overflow-y-auto mx-auto"
+      >
         <ChatMessages
           chat={chat}
           currentTurn={chatTurn}
-          className="pb-[250px]"
+          className="pb-[165px]"
           turnClassName="px-2 max-w-[640px] mx-auto"
         />
       </div>

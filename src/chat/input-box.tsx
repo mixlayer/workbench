@@ -61,8 +61,8 @@ export function InputBox(props: {
             e.target.style.height = 'auto';
             const maxHeight = 140; // match the max-h- class
             const newHeight = Math.min(e.target.scrollHeight, maxHeight);
+            // 48, 72, 96, 120, 140
             e.target.style.height = `${newHeight}px`;
-
             setMessage(e.target.value);
           }}
           onKeyDown={(e) => {

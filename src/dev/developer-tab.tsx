@@ -239,7 +239,7 @@ export function DeveloperTab(props: { className?: string }) {
     <div className={`flex w-full h-full ${props.className}`}>
       <div className="flex-1 bg-gray-50 py-1 pr-1">
         <PanelGroup direction="horizontal">
-          <Panel className="p-0.5 pr-1">
+          <Panel defaultSize={40} className="p-0.5 pr-1">
             <div className="pl-1 w-full h-full flex flex-col space-y-1">
               <div className="flex space-x-1">
                 <RunStateLabel state={runState} />
@@ -252,13 +252,15 @@ export function DeveloperTab(props: { className?: string }) {
                     setRunState(RunState.Ready);
                   }}
                 />
-
                 <Button onClick={clearOutput} size="sm" variant="outline">
                   <EraserIcon /> Clear
                 </Button>
               </div>
               <PanelGroup direction="vertical">
-                <Panel className="rounded-xs bg-zinc-700 border border-gray-700">
+                <Panel
+                  defaultSize={75}
+                  className="rounded-xs bg-zinc-700 border border-gray-700"
+                >
                   <Console output={consoleOutput} />
                 </Panel>
                 <PanelResizeHandle className="py-0.5" />
