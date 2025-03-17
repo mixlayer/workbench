@@ -36,6 +36,7 @@ export interface MxlRequestHistory {
 }
 
 export interface MxlChat {
+  id: string;
   name: string;
   runState: RunState;
   turns: MxlChatTurn[];
@@ -43,6 +44,7 @@ export interface MxlChat {
 
 export interface MxlChatTurn {
   requestId: string;
+  chatId: string;
   message: MxlChatMessage;
   reply: MxlChatReply;
 }
@@ -57,4 +59,21 @@ export interface MxlChatMessage {
 export interface MxlChatReply {
   role: string;
   content: string;
+}
+
+// Returns a JSON array of messages suitable for a POST
+// request body
+export function chatMessagesJson(chat: MxlChat) {
+  return chat.turns.flatMap((t) => {
+    return [
+      {
+        role: 'user',
+        text: t.message.content,
+      },
+      {
+        role: 'assistant',
+        text: t.reply.content,
+      },
+    ];
+  });
 }

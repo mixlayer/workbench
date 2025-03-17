@@ -11,17 +11,20 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vs as syntaxStyle } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export function ChatMessages(props: {
+  className?: string;
   chat: MxlChat;
   currentTurn: MxlChatTurn | null;
+  turnClassName?: string;
 }) {
   return (
-    <div>
+    <div className={props.className}>
       {props.chat.turns.map((turn: MxlChatTurn, idx) => (
         <ChatMessageTurn
           index={idx}
           key={idx}
           input={turn.message}
           reply={turn.reply}
+          className={props.turnClassName}
         />
       ))}
       {props.currentTurn && (
@@ -30,6 +33,7 @@ export function ChatMessages(props: {
           key={props.chat.turns.length}
           input={props.currentTurn.message}
           reply={props.currentTurn.reply}
+          className={props.turnClassName}
         />
       )}
     </div>
@@ -40,11 +44,12 @@ export function ChatMessageTurn(props: {
   index: number;
   input: MxlChatMessage;
   reply: MxlChatReply;
+  className?: string;
 }) {
-  const { input, reply } = props;
+  const { input, reply, className } = props;
 
   return (
-    <div className={`${props.index > 0 ? 'mt-8' : 'mt-4'}`}>
+    <div className={`${props.index > 0 ? 'mt-8' : 'mt-4'} ${className}`}>
       <div className="flex">
         <div className="flex-1"></div>
         <div className="whitespace-pre-wrap rounded-2xl rounded-br-none w-7/8 border-gray-200 border bg-[#fcfcfc] p-2 px-4 mt-1">

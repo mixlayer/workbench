@@ -52,7 +52,7 @@ export function InputBox(props: {
   }, [onStop]);
 
   return (
-    <div className="flex-col w-full min-h-[var(--input-min-height)] border border-gray-200 focus-within:border-gray-400 focus-within:shadow-sm focus-within:shadow-gray-200 focus-within:ring-2 focus-within:ring-gray-100 rounded-md p-2 shadow-xs transition-colors duration-150 ">
+    <div className="bg-white flex-col w-full max-w-[680px] mx-auto min-h-[var(--input-min-height)] border border-gray-200 focus-within:border-gray-400 focus-within:shadow-sm focus-within:shadow-gray-200 focus-within:ring-2 focus-within:ring-gray-100 rounded-md p-2 shadow-xs transition-colors duration-150 ">
       <div className="flex-1 flex p-2">
         <textarea
           placeholder="Send a message"

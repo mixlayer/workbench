@@ -2,11 +2,25 @@ import { useCallback, useState } from 'react';
 import { OutputPart, RunState } from '@/lib/utils';
 import { OutputPane } from './output-pane';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { ChatPane } from './chat-pane';
+import { MxlChat, MxlChatTurn } from '@/lib/request';
 
-export interface StreamPane {
+export interface OutputPaneContent {
   kind: 'stream';
-  stream: string;
+  stream?: string;
 }
+
+export interface ChatPaneContent {
+  kind: 'chat';
+  chat: MxlChat;
+}
+
+export interface ContentPane {
+  kind: 'content';
+  content: ContentPaneType;
+}
+
+export type ContentPaneType = OutputPaneContent | ChatPaneContent;
 
 export enum SplitDirection {
   Horizontal,
@@ -20,18 +34,25 @@ export interface SplitPane {
   right: OutputPaneType;
 }
 
-export type OutputPaneType = StreamPane | SplitPane;
+export type OutputPaneType = ContentPane | SplitPane;
 
 export function SplittableOutputPane(props: {
   outputParts: OutputPart[];
   streams: string[];
+  chats: MxlChat[];
+  currentChatTurn: MxlChatTurn | null;
   onCloseClick?: () => void;
+  onNewChatClick: () => void;
+  onChatSendClick: (chatId: string, message: string) => void;
 }) {
-  const { outputParts, streams } = props;
+  const { outputParts, streams, chats } = props;
 
   const [layout, setLayout] = useState<OutputPaneType>({
-    kind: 'stream',
-    stream: '0',
+    kind: 'content',
+    content: {
+      kind: 'stream',
+      stream: '0',
+    },
   });
 
   const closeLeft = () => {
@@ -56,14 +77,17 @@ export function SplittableOutputPane(props: {
 
   const onSplitClick = useCallback(
     (direction: SplitDirection) => {
-      if (layout.kind === 'stream') {
+      if (layout.kind === 'content') {
         const newPane: OutputPaneType = {
           kind: 'split',
           direction,
           left: layout,
           right: {
-            kind: 'stream',
-            stream: '1',
+            kind: 'content',
+            content: {
+              kind: 'stream',
+              stream: '0',
+            },
           },
         };
 
@@ -72,6 +96,22 @@ export function SplittableOutputPane(props: {
     },
     [layout],
   );
+
+  const onChatClick = (chat: MxlChat) => {
+    setLayout((old) => {
+      if (old.kind === 'content') {
+        return {
+          kind: 'content',
+          content: {
+            kind: 'chat',
+            chat,
+          },
+        };
+      }
+
+      return old;
+    });
+  };
 
   if (layout.kind === 'split') {
     const direction =
@@ -94,6 +134,10 @@ export function SplittableOutputPane(props: {
             streams={streams}
             onCloseClick={closeLeft}
             outputParts={outputParts}
+            chats={chats}
+            onNewChatClick={props.onNewChatClick}
+            currentChatTurn={props.currentChatTurn}
+            onChatSendClick={props.onChatSendClick}
           />
         </Panel>
         <PanelResizeHandle />
@@ -102,21 +146,87 @@ export function SplittableOutputPane(props: {
             streams={streams}
             onCloseClick={closeRight}
             outputParts={outputParts}
+            chats={chats}
+            onNewChatClick={props.onNewChatClick}
+            currentChatTurn={props.currentChatTurn}
+            onChatSendClick={props.onChatSendClick}
           />
         </Panel>
       </PanelGroup>
     );
   }
 
-  if (layout.kind === 'stream') {
+  if (layout.kind === 'content') {
+    return (
+      <ContentPane
+        content={layout.content}
+        runState={RunState.Ready}
+        outputParts={outputParts}
+        onSplitClick={onSplitClick}
+        onCloseClick={props.onCloseClick}
+        onChatClick={onChatClick}
+        streams={streams}
+        chats={chats}
+        onNewChatClick={props.onNewChatClick}
+        onChatSendClick={props.onChatSendClick}
+        currentChatTurn={props.currentChatTurn}
+      />
+    );
+  }
+}
+
+function ContentPane(props: {
+  content: ContentPaneType;
+  runState: RunState;
+  outputParts: OutputPart[];
+  onSplitClick: (direction: SplitDirection) => void;
+  onCloseClick?: () => void;
+  onChatClick: (chat: MxlChat) => void;
+  onNewChatClick: () => void;
+  onChatSendClick: (chatId: string, message: string) => void;
+  streams: string[];
+  chats: MxlChat[];
+  currentChatTurn: MxlChatTurn | null;
+}) {
+  const {
+    content,
+    outputParts,
+    onSplitClick,
+    onCloseClick,
+    onChatClick,
+    streams,
+    chats,
+  } = props;
+
+  if (content.kind === 'stream') {
     return (
       <OutputPane
         runState={RunState.Ready}
         outputParts={outputParts}
         onSplitClick={onSplitClick}
+        onCloseClick={onCloseClick}
+        onNewChatClick={props.onNewChatClick}
+        streams={streams}
+        chats={chats}
+        onChatClick={onChatClick}
+      />
+    );
+  }
+
+  if (content.kind === 'chat') {
+    return (
+      <ChatPane
+        runState={RunState.Ready}
+        outputParts={outputParts}
+        onSplitClick={onSplitClick}
         onOutputClearClick={() => {}}
         onCloseClick={props.onCloseClick}
-        streams={streams}
+        onNewChatClick={props.onNewChatClick}
+        chats={chats}
+        chatId={content.chat.id}
+        onChatClick={onChatClick}
+        onChatSendClick={props.onChatSendClick}
+        currentTurn={props.currentChatTurn}
       />
     );
   }

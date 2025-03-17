@@ -25,6 +25,7 @@ export function ChatTab(props: { className?: string }) {
   const [currentChat, setCurrentChat] = useState<MxlChat>({
     name: 'Chat',
     turns: [],
+    id: '1',
     runState: RunState.Ready,
   });
 
@@ -84,6 +85,7 @@ export function ChatTab(props: { className?: string }) {
 
       const turn = {
         requestId: '1',
+        chatId: currentChat.id,
         message: {
           role: 'user',
           content: message,

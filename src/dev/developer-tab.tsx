@@ -12,6 +12,10 @@ import { EraserIcon } from 'lucide-react';
 import { SplittableOutputPane } from './splittable';
 import SSE, { connect } from '@/lib/sse';
 import { Console } from './console';
+import { chatMessagesJson, MxlChat, MxlChatTurn } from '@/lib/request';
+import { v4 as uuidv4 } from 'uuid';
+
+const RUN_URL = 'http://localhost:8484/';
 
 export function DeveloperTab(props: { className?: string }) {
   const [params, setParams] = useState('{\n}');
@@ -20,9 +24,25 @@ export function DeveloperTab(props: { className?: string }) {
   const [streams, setStreams] = useState<string[]>([]);
   const [consoleOutput, setConsoleOutput] = useState<string>('');
   const [sseChannel, setSseChannel] = useState<SSE | null>(null);
+  const [chats, setChats] = useState<MxlChat[]>([]);
+  const [currentChatTurn, setCurrentChatTurn] = useState<MxlChatTurn | null>(
+    null,
+  );
 
-  const pushOutputPart = useCallback(
-    (reply: any, done: boolean) => {
+  const onNewChatClick = useCallback(() => {
+    setChats((prev) => [
+      ...prev,
+      {
+        id: uuidv4(),
+        name: 'Untitled Chat',
+        runState: RunState.Ready,
+        turns: [],
+      },
+    ]);
+  }, []);
+
+  const onSseStreamFrame = useCallback(
+    (reply: any, done: boolean): OutputPart | null => {
       if (done) {
         setRunState(RunState.Ready);
         setSseChannel(null);
@@ -43,6 +63,7 @@ export function DeveloperTab(props: { className?: string }) {
         (reply.event === 'sys.stdout' || reply.event === 'sys.stderr')
       ) {
         setConsoleOutput((prev) => prev + reply.text);
+        return null;
       }
 
       if (reply.error) {
@@ -52,7 +73,8 @@ export function DeveloperTab(props: { className?: string }) {
           stream: reply.stream + '',
         } as ErrorOutputPart;
         setOutputParts((prev) => [...prev, nextOutputPart]);
-      } else {
+        return nextOutputPart;
+      } else if (reply.text) {
         let nextOutputPart = {
           text: reply.text as string,
           hidden: reply.hidden as boolean,
@@ -60,23 +82,144 @@ export function DeveloperTab(props: { className?: string }) {
           type: 'text',
         } as TextOutputPart;
         setOutputParts((prev) => [...prev, nextOutputPart]);
+        return nextOutputPart;
+      } else {
+        return null;
       }
     },
     [setStreams, setOutputParts, setConsoleOutput],
   );
 
-  const run = useCallback(() => {
-    setOutputParts([]);
+  const appendOutputToChatTurn = useCallback(
+    (part: OutputPart, done: boolean) => {
+      console.log('onOutput called with part:', part);
+
+      if (done && currentChatTurn) {
+        const currentChat = chats.find(
+          (chat) => chat.id === currentChatTurn.chatId,
+        );
+
+        if (currentChat && currentChatTurn) {
+          const nextChat = {
+            ...currentChat,
+            turns: [...currentChat.turns, currentChatTurn],
+          };
+
+          setChats((prev) => [
+            ...prev.filter((chat) => chat.id !== currentChat.id),
+            nextChat,
+          ]);
+
+          setCurrentChatTurn(null);
+        }
+
+        return;
+      }
+
+      setCurrentChatTurn((prev) => {
+        if (!prev) {
+          return null;
+        }
+
+        if (part.type === 'text' && !part.hidden) {
+          return {
+            ...prev,
+            reply: {
+              ...prev.reply,
+              content: prev.reply.content + part.text,
+            },
+          };
+        } else {
+          return prev;
+        }
+      });
+    },
+    [],
+  );
+
+  const sendChatMessage = useCallback(
+    (chatId: string, message: string) => {
+      console.log('onChatSendClick', chatId, message);
+
+      if (sseChannel !== null) {
+        //TODO toast an error
+        console.error('request already in progress');
+        return;
+      }
+
+      clearOutput();
+
+      const chat = chats.find((chat) => chat.id === chatId);
+
+      if (!chat) {
+        console.error('chat not found');
+        return;
+      }
+
+      const messages = chatMessagesJson(chat);
+      messages.push({
+        role: 'user',
+        text: message,
+      });
+
+      const turn = {
+        requestId: '1',
+        chatId: chat.id,
+        message: {
+          role: 'user',
+          content: message,
+        },
+        reply: {
+          role: 'assistant',
+          content: '',
+        },
+      };
+
+      setRunState(RunState.Generating);
+      setCurrentChatTurn(turn);
+
+      const sse = connect(
+        RUN_URL,
+        {
+          showHidden: true,
+          params: {
+            messages,
+          },
+        },
+        (part, done) => {
+          let outputPart = onSseStreamFrame(part, done);
+
+          if (outputPart !== null) {
+            appendOutputToChatTurn(outputPart, done);
+          }
+        },
+        (error) => {
+          setRunState(RunState.Error);
+          console.error(error);
+        },
+      );
+
+      setSseChannel(sse);
+    },
+    [chats, sseChannel],
+  );
+
+  const sendModelRequest = useCallback(() => {
+    if (sseChannel !== null) {
+      //TODO toast an error
+      console.error('request already in progress');
+      return;
+    }
+
+    clearOutput();
     setRunState(RunState.Generating);
-    setConsoleOutput('');
-    setStreams([]);
 
     const sse = connect(
-      'http://localhost:8484/',
+      RUN_URL,
       {
         showHidden: true,
       },
-      pushOutputPart,
+      onSseStreamFrame,
       (error) => {
         setRunState(RunState.Error);
         console.error(error);
@@ -84,7 +227,7 @@ export function DeveloperTab(props: { className?: string }) {
     );
 
     setSseChannel(sse);
-  }, []);
+  }, [sseChannel]);
 
   let clearOutput = useCallback(() => {
     setStreams([]);
@@ -101,13 +244,9 @@ export function DeveloperTab(props: { className?: string }) {
               <div className="flex space-x-1">
                 <RunStateLabel state={runState} />
                 <div className="flex-1"></div>
-                {/* <Button onClick={run} size="sm">
-                  <SolidPlayIcon />
-                  <div className="inline-block pr-1">Run</div>
-                </Button> */}
                 <RunStopButton
                   runState={runState}
-                  onRunClick={run}
+                  onRunClick={sendModelRequest}
                   onStopClick={() => {
                     sseChannel?.close();
                     setRunState(RunState.Ready);
@@ -133,7 +272,14 @@ export function DeveloperTab(props: { className?: string }) {
           </Panel>
           <PanelResizeHandle />
           <Panel>
-            <SplittableOutputPane outputParts={outputParts} streams={streams} />
+            <SplittableOutputPane
+              outputParts={outputParts}
+              streams={streams}
+              chats={chats}
+              currentChatTurn={currentChatTurn}
+              onNewChatClick={onNewChatClick}
+              onChatSendClick={sendChatMessage}
+            />
           </Panel>
         </PanelGroup>
       </div>
