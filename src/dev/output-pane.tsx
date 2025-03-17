@@ -1,26 +1,21 @@
-import { OutputPart, RunState, TextOutputPart } from '@/lib/utils';
+import { OutputPart, TextOutputPart } from '@/lib/utils';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MixlayerLogoMark } from '@/components/logos/MixlayerLogoMark';
 import { SplitDirection } from './splittable';
 import { toast } from 'sonner';
 import { OverlayDropdownMenu } from './overlay-menu';
 import { MxlChat } from '@/lib/request';
+import { useMxlClientContext } from './developer-tab';
 
 export function OutputPane(props: {
-  runState: RunState;
-  outputParts: OutputPart[];
   onCloseClick?: () => void;
   onSplitClick: (direction: SplitDirection) => void;
-  streams: string[];
-  chats: MxlChat[];
   onChatClick: (chat: MxlChat) => void;
-  onNewChatClick: () => void;
 }) {
   const outputDiv = useRef<HTMLDivElement>(null);
   const [selectedStream, setSelectedStream] = useState('0');
   const [showHiddenTokens, setShowHiddenTokens] = useState(false);
-
-  let { outputParts } = props;
+  const { streams, chats, outputParts, createNewChat } = useMxlClientContext();
 
   useEffect(() => {
     const el = outputDiv.current;
@@ -43,11 +38,14 @@ export function OutputPane(props: {
     <div className="relative h-full bg-white border border-gray-200 rounded-sm">
       <div className="absolute top-2 right-2 z-10">
         <OverlayDropdownMenu
-          onOutputCopyClick={copyOutputToClipboard}
+          streams={streams}
+          chats={chats}
           selectedStream={selectedStream}
           setSelectedStream={setSelectedStream}
           showHiddenTokens={showHiddenTokens}
           setShowHiddenTokens={setShowHiddenTokens}
+          onOutputCopyClick={copyOutputToClipboard}
+          onNewChatClick={createNewChat}
           {...props}
         />
       </div>

@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
-import { OutputPart, RunState } from '@/lib/utils';
 import { OutputPane } from './output-pane';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ChatPane } from './chat-pane';
-import { MxlChat, MxlChatTurn } from '@/lib/request';
+import { MxlChat } from '@/lib/request';
 
 export interface OutputPaneContent {
   kind: 'stream';
@@ -36,17 +35,7 @@ export interface SplitPane {
 
 export type OutputPaneType = ContentPane | SplitPane;
 
-export function SplittableOutputPane(props: {
-  outputParts: OutputPart[];
-  streams: string[];
-  chats: MxlChat[];
-  currentChatTurn: MxlChatTurn | null;
-  onCloseClick?: () => void;
-  onNewChatClick: () => void;
-  onChatSendClick: (chatId: string, message: string) => void;
-}) {
-  const { outputParts, streams, chats } = props;
-
+export function SplittableOutputPane(props: { onCloseClick?: () => void }) {
   const [layout, setLayout] = useState<OutputPaneType>({
     kind: 'content',
     content: {
@@ -130,27 +119,11 @@ export function SplittableOutputPane(props: {
     return (
       <PanelGroup direction={direction}>
         <Panel className={paneAPad}>
-          <SplittableOutputPane
-            streams={streams}
-            onCloseClick={closeLeft}
-            outputParts={outputParts}
-            chats={chats}
-            onNewChatClick={props.onNewChatClick}
-            currentChatTurn={props.currentChatTurn}
-            onChatSendClick={props.onChatSendClick}
-          />
+          <SplittableOutputPane onCloseClick={closeLeft} />
         </Panel>
         <PanelResizeHandle />
         <Panel className={paneBPad}>
-          <SplittableOutputPane
-            streams={streams}
-            onCloseClick={closeRight}
-            outputParts={outputParts}
-            chats={chats}
-            onNewChatClick={props.onNewChatClick}
-            currentChatTurn={props.currentChatTurn}
-            onChatSendClick={props.onChatSendClick}
-          />
+          <SplittableOutputPane onCloseClick={closeRight} />
         </Panel>
       </PanelGroup>
     );
@@ -160,16 +133,9 @@ export function SplittableOutputPane(props: {
     return (
       <ContentPane
         content={layout.content}
-        runState={RunState.Ready}
-        outputParts={outputParts}
         onSplitClick={onSplitClick}
         onCloseClick={props.onCloseClick}
         onChatClick={onChatClick}
-        streams={streams}
-        chats={chats}
-        onNewChatClick={props.onNewChatClick}
-        onChatSendClick={props.onChatSendClick}
-        currentChatTurn={props.currentChatTurn}
       />
     );
   }
@@ -177,37 +143,17 @@ export function SplittableOutputPane(props: {
 
 function ContentPane(props: {
   content: ContentPaneType;
-  runState: RunState;
-  outputParts: OutputPart[];
   onSplitClick: (direction: SplitDirection) => void;
   onCloseClick?: () => void;
   onChatClick: (chat: MxlChat) => void;
-  onNewChatClick: () => void;
-  onChatSendClick: (chatId: string, message: string) => void;
-  streams: string[];
-  chats: MxlChat[];
-  currentChatTurn: MxlChatTurn | null;
 }) {
-  const {
-    content,
-    outputParts,
-    onSplitClick,
-    onCloseClick,
-    onChatClick,
-    streams,
-    chats,
-  } = props;
+  const { content, onSplitClick, onCloseClick, onChatClick } = props;
 
   if (content.kind === 'stream') {
     return (
       <OutputPane
-        runState={RunState.Ready}
-        outputParts={outputParts}
         onSplitClick={onSplitClick}
         onCloseClick={onCloseClick}
-        onNewChatClick={props.onNewChatClick}
-        streams={streams}
-        chats={chats}
         onChatClick={onChatClick}
       />
     );
@@ -216,17 +162,10 @@ function ContentPane(props: {
   if (content.kind === 'chat') {
     return (
       <ChatPane
-        runState={RunState.Ready}
-        outputParts={outputParts}
         onSplitClick={onSplitClick}
-        onOutputClearClick={() => {}}
         onCloseClick={props.onCloseClick}
-        onNewChatClick={props.onNewChatClick}
-        chats={chats}
         chatId={content.chat.id}
         onChatClick={onChatClick}
-        onChatSendClick={props.onChatSendClick}
-        currentTurn={props.currentChatTurn}
       />
     );
   }

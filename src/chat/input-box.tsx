@@ -47,6 +47,7 @@ export function InputBox(props: {
     onSend(message.trim());
     setMessage('');
   }, [message, onSend]);
+
   const onStopClick = useCallback(() => {
     onStop();
   }, [onStop]);

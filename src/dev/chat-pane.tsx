@@ -1,32 +1,28 @@
-import { OutputPart, RunState } from '@/lib/utils';
 import { OverlayDropdownMenu } from './overlay-menu';
 import { SplitDirection } from './splittable';
 import { InputBox } from '../chat/input-box';
 import { ChatMessages } from '../chat/chat-messages';
-import { MxlChat, MxlChatTurn } from '@/lib/request';
+import { MxlChat } from '@/lib/request';
 import { useEffect, useRef, useState } from 'react';
+import { useMxlClientContext } from './developer-tab';
 
 export function ChatPane(props: {
-  runState: RunState;
-  outputParts: OutputPart[];
   onSplitClick: (direction: SplitDirection) => void;
-  onOutputClearClick: () => void;
   onCloseClick?: () => void;
-  onNewChatClick: () => void;
   onChatClick: (chat: MxlChat) => void;
-  onChatSendClick: (chatId: string, message: string) => void;
-  chats: MxlChat[];
   chatId: string;
-  currentTurn: MxlChatTurn | null;
 }) {
   const chatMessagesDiv = useRef<HTMLDivElement>(null);
   const [autoscroll, setAutoscroll] = useState(true);
+
+  const { chats, runState, currentChatTurn, sendChatMessage, createNewChat } =
+    useMxlClientContext();
 
   useEffect(() => {
     if (!chatMessagesDiv.current || !autoscroll) return;
 
     chatMessagesDiv.current.scrollTop = chatMessagesDiv.current.scrollHeight;
-  }, [chatMessagesDiv.current, props.currentTurn, autoscroll]);
+  }, [chatMessagesDiv.current, currentChatTurn, autoscroll]);
 
   useEffect(() => {
     if (!chatMessagesDiv.current) return;
@@ -50,11 +46,11 @@ export function ChatPane(props: {
     };
   }, [chatMessagesDiv]);
 
-  const chat = props.chats.find((chat) => chat.id === props.chatId);
+  const chat = chats.find((chat) => chat.id === props.chatId);
   let chatTurn = null;
 
-  if (props.currentTurn && props.currentTurn.chatId == props.chatId) {
-    chatTurn = props.currentTurn;
+  if (currentChatTurn && currentChatTurn.chatId == props.chatId) {
+    chatTurn = currentChatTurn;
   }
 
   if (!chat) {
@@ -68,6 +64,8 @@ export function ChatPane(props: {
           streams={[]}
           selectedStream={''}
           showHiddenTokens={false}
+          chats={chats}
+          onNewChatClick={createNewChat}
           {...props}
         />
       </div>
@@ -87,12 +85,12 @@ export function ChatPane(props: {
       <div className="absolute w-full bottom-3 px-3">
         <InputBox
           onSendClick={(message) => {
-            props.onChatSendClick(chat.id, message);
+            sendChatMessage(chat.id, message);
           }}
           onStopClick={function (): void {
             throw new Error('Function not implemented.');
           }}
-          runState={props.runState}
+          runState={runState}
         />
       </div>
     </div>
