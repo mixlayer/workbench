@@ -15,8 +15,15 @@ export function ChatPane(props: {
   const chatMessagesDiv = useRef<HTMLDivElement>(null);
   const [autoscroll, setAutoscroll] = useState(true);
 
-  const { chats, runState, currentChatTurn, sendChatMessage, createNewChat } =
-    useMxlClientContext();
+  const {
+    chats,
+    runState,
+    currentChatTurn,
+    sendChatMessage,
+    createNewChat,
+    stopRequest,
+    renameChat,
+  } = useMxlClientContext();
 
   useEffect(() => {
     if (!chatMessagesDiv.current || !autoscroll) return;
@@ -87,10 +94,10 @@ export function ChatPane(props: {
           onSendClick={(message) => {
             sendChatMessage(chat.id, message);
           }}
-          onStopClick={function (): void {
-            throw new Error('Function not implemented.');
-          }}
+          onStopClick={stopRequest}
           runState={runState}
+          chat={chat}
+          renameChat={renameChat}
         />
       </div>
     </div>

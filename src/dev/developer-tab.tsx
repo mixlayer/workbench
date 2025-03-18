@@ -35,6 +35,7 @@ export interface MixlayerClientContextState {
   currentChatTurn: MxlChatTurn | null;
   sendChatMessage: (chatId: string, message: string) => void;
   createNewChat: () => string;
+  renameChat: (chatId: string, name: string) => void;
   stopRequest: () => void;
 }
 
@@ -144,6 +145,9 @@ export function DeveloperTab(props: { className?: string }) {
 
       // Use the ref to access the latest value
       if (done && currentChatTurnRef.current) {
+        currentChatTurnRef.current.reply.content +=
+          part?.type === 'text' ? part.text : '';
+
         const currentChat = chats.find(
           (chat) => chat.id === currentChatTurnRef.current!.chatId,
         );
@@ -181,6 +185,7 @@ export function DeveloperTab(props: { className?: string }) {
           }
 
           if (part.type === 'text' && !part.hidden) {
+            console.log(`appending ${part.text}`);
             return {
               ...prev,
               reply: {
@@ -239,12 +244,19 @@ export function DeveloperTab(props: { className?: string }) {
       setCurrentChatTurn(turn);
       // The ref will be updated via the useEffect
 
+      const paramsJson = JSON.parse(params);
+
+      if (typeof paramsJson !== 'object') {
+        throw new Error('params must be an object');
+      }
+
       const sse = connect(
         RUN_URL,
         {
           showHidden: true,
           params: {
             messages,
+            ...paramsJson,
           },
         },
         (part, done) => {
@@ -260,7 +272,14 @@ export function DeveloperTab(props: { className?: string }) {
 
       setSseChannel(sse);
     },
-    [chats, sseChannel, clearOutput, onSseStreamFrame, appendOutputToChatTurn],
+    [
+      chats,
+      params,
+      sseChannel,
+      clearOutput,
+      onSseStreamFrame,
+      appendOutputToChatTurn,
+    ],
   );
 
   const sendModelRequest = useCallback(() => {
@@ -273,10 +292,17 @@ export function DeveloperTab(props: { className?: string }) {
     clearOutput();
     setRunState(RunState.Generating);
 
+    const paramsJson = params === '' ? {} : JSON.parse(params);
+
+    if (typeof paramsJson !== 'object') {
+      throw new Error('params must be an object');
+    }
+
     const sse = connect(
       RUN_URL,
       {
         showHidden: true,
+        params: paramsJson,
       },
       onSseStreamFrame,
       (error) => {
@@ -286,7 +312,7 @@ export function DeveloperTab(props: { className?: string }) {
     );
 
     setSseChannel(sse);
-  }, [sseChannel]);
+  }, [params, sseChannel]);
 
   return (
     <MixlayerClientContext.Provider
@@ -303,6 +329,13 @@ export function DeveloperTab(props: { className?: string }) {
           sseChannel?.close();
           setSseChannel(null);
           setRunState(RunState.Ready);
+        },
+        renameChat: (chatId: string, name: string) => {
+          setChats((prevChats) =>
+            prevChats.map((chat) =>
+              chat.id === chatId ? { ...chat, name } : chat,
+            ),
+          );
         },
       }}
     >
