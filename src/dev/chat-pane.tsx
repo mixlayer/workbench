@@ -4,7 +4,7 @@ import { InputBox } from '../chat/input-box';
 import { ChatMessages } from '../chat/chat-messages';
 import { MxlChat } from '@/lib/request';
 import { useEffect, useRef, useState } from 'react';
-import { useMxlClientContext } from './developer-tab';
+import { useAppClientState } from './developer-tab';
 
 export function ChatPane(props: {
   onSplitClick: (direction: SplitDirection) => void;
@@ -23,7 +23,7 @@ export function ChatPane(props: {
     createNewChat,
     stopRequest,
     renameChat,
-  } = useMxlClientContext();
+  } = useAppClientState();
 
   useEffect(() => {
     if (!chatMessagesDiv.current || !autoscroll) return;

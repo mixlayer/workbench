@@ -5,7 +5,7 @@ import { SplitDirection } from './splittable';
 import { toast } from 'sonner';
 import { OverlayDropdownMenu } from './overlay-menu';
 import { MxlChat } from '@/lib/request';
-import { useMxlClientContext } from './developer-tab';
+import { useAppClientState } from './developer-tab';
 
 export function OutputPane(props: {
   onCloseClick?: () => void;
@@ -15,7 +15,7 @@ export function OutputPane(props: {
   const outputDiv = useRef<HTMLDivElement>(null);
   const [selectedStream, setSelectedStream] = useState('0');
   const [showHiddenTokens, setShowHiddenTokens] = useState(false);
-  const { streams, chats, outputParts, createNewChat } = useMxlClientContext();
+  const { streams, chats, outputParts, createNewChat } = useAppClientState();
 
   useEffect(() => {
     const el = outputDiv.current;
