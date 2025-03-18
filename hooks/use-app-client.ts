@@ -233,6 +233,7 @@ function appClientReducer(
           runState: RunState.Ready,
         });
       });
+
     case 'RENAME_CHAT':
       return produce(state, (draft) => {
         const chat = draft.chats.find((chat) => chat.id === action.chatId);
@@ -244,13 +245,18 @@ function appClientReducer(
       return produce(state, (draft) => {
         draft.response = null;
       });
+
     case 'SET_PARAMS':
       return produce(state, (draft) => {
         draft.params = action.params;
       });
+    case 'STOP_REQUEST':
+      return produce(state, (draft) => {
+        draft.runState = RunState.Ready;
+        draft.response!.sseChannel?.close();
+        draft.response!.sseChannel = null;
+      });
   }
-
-  throw new Error(`Unknown action: ${action.type}`);
 }
 
 // A hook used to manage state for a client that

@@ -1,12 +1,10 @@
 import { createContext, useContext } from 'react';
 import { ParamsEditorPane } from './params-pane';
-import { OutputPart, RunState } from '@/lib/utils';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Button } from '@/components/ui/button';
 import { EraserIcon } from 'lucide-react';
 import { SplittableOutputPane } from './splittable';
 import { Console } from './console';
-import { MxlChat, MxlChatTurn } from '@/lib/request';
 import { RunStateLabel } from '@/components/ui/run-state-label';
 import { RunStopButton } from '@/components/ui/run-stop-button';
 import { UseAppClient, useAppClient } from '@/hooks/use-app-client';

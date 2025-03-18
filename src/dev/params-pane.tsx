@@ -11,6 +11,7 @@ export function ParamsEditorPane(props: {
     fontSize: 14,
     minimap: { enabled: false },
     lineNumbersMinChars: 2,
+    wordWrap: 'on' as const,
   };
 
   return (

@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { OverlayDropdownMenu } from './overlay-menu';
 import { MxlChat } from '@/lib/request';
 import { useAppClientState } from './developer-tab';
-import { useAppClient } from '@/hooks/use-app-client';
 
 export function OutputPane(props: {
   onCloseClick?: () => void;
