@@ -1,336 +1,311 @@
 import { chatMessagesJson, MxlChat, MxlChatTurn } from '@/lib/request';
-import SSE, { connect } from '@/lib/sse';
-import {
-  ErrorOutputPart,
-  OutputPart,
-  RunState,
-  TextOutputPart,
-} from '@/lib/utils';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import SSE, { connectStream, Frame } from '@/lib/sse';
+import { OutputPart, RunState } from '@/lib/utils';
+import { useEffect, useReducer } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { produce, WritableDraft } from 'immer';
 
 const RUN_URL = 'http://localhost:8484/';
 
 export interface AppClientState {
   runState: RunState;
-  outputParts: OutputPart[];
-  streams: string[];
-  consoleOutput: string;
-  chats: MxlChat[];
-  currentChatTurn: MxlChatTurn | null;
+  response: AppResponse | null;
   params: string;
+  chats: MxlChat[];
+}
+
+export interface UseAppClient {
+  state: AppClientState;
   clearOutput: () => void;
   setParams: (params: string) => void;
   sendRequest: () => void;
-  sendChatMessage: (chatId: string, message: string) => void;
-  createNewChat: () => string;
-  renameChat: (chatId: string, name: string) => void;
   stopRequest: () => void;
+  sendChatMessage: (chatId: string, message: string) => void;
+  createNewChat: (name: string | null) => void;
+  renameChat: (chatId: string, name: string) => void;
+}
+
+interface AppResponse {
+  // the body of the request that was sent to the app
+  requestBody: any;
+
+  // all output parts received for this response
+  outputParts: OutputPart[];
+
+  // streams recognized by this response
+  streams: string[];
+
+  // console output received for this response
+  consoleOutput: string;
+
+  // current chat turn for this response (if a chat response)
+  chatTurn: MxlChatTurn | null;
+
+  // SSE channel being used to receive this response
+  sseChannel: SSE | null;
+}
+
+type AppResponseAction = {
+  type: 'RECEIVE_FRAME';
+  frame: Frame;
+};
+
+type AppClientAction =
+  | AppResponseAction
+  | {
+      type: 'CLEAR_OUTPUT';
+    }
+  | {
+      type: 'SET_PARAMS';
+      params: string;
+    }
+  | {
+      type: 'BEGIN_APP_REQUEST';
+    }
+  | {
+      type: 'STOP_REQUEST';
+    }
+  | {
+      type: 'BEGIN_APP_CHAT_REQUEST';
+      chatId: string;
+      message: string;
+    }
+  | {
+      type: 'REQUEST_CONNECTED';
+      sseChannel: SSE;
+    }
+  | { type: 'CREATE_CHAT'; id: string; name: string }
+  | { type: 'RENAME_CHAT'; chatId: string; name: string };
+
+function allocAppResponse(
+  body: any,
+  chatTurn: MxlChatTurn | null,
+): AppResponse {
+  return {
+    requestBody: body,
+    outputParts: [],
+    streams: [],
+    consoleOutput: '',
+    chatTurn,
+    sseChannel: null,
+  };
+}
+
+function appResponseReducer(
+  draft: WritableDraft<AppResponse>,
+  action: AppResponseAction,
+): void {
+  switch (action.type) {
+    case 'RECEIVE_FRAME':
+      switch (action.frame.type) {
+        case 'text':
+          draft.outputParts.push({
+            type: 'text',
+            text: action.frame.text,
+            hidden: action.frame.hidden,
+            stream: action.frame.stream,
+          });
+
+          if (
+            action.frame.stream &&
+            draft.streams.indexOf(action.frame.stream) === -1
+          ) {
+            draft.streams.push(action.frame.stream);
+          }
+
+          if (!action.frame.hidden && draft.chatTurn) {
+            draft.chatTurn.reply.content += action.frame.text;
+          }
+
+          break;
+        case 'error':
+          draft.outputParts.push({
+            type: 'error',
+            stream: action.frame.stream,
+            message: action.frame.error,
+          });
+          break;
+        case 'console':
+          draft.consoleOutput += action.frame.output;
+          break;
+        case 'done':
+          draft.sseChannel = null;
+          break;
+        default:
+          console.warn(`Unknown frame type`, action.frame);
+      }
+  }
+}
+
+function appClientReducer(
+  state: AppClientState,
+  action: AppClientAction,
+): AppClientState {
+  switch (action.type) {
+    case 'BEGIN_APP_REQUEST':
+      return produce(state, (draft) => {
+        draft.runState = RunState.Connecting;
+        draft.response = allocAppResponse(
+          { params: JSON.parse(draft.params) },
+          null,
+        );
+      });
+    case 'BEGIN_APP_CHAT_REQUEST':
+      return produce(state, (draft) => {
+        draft.runState = RunState.Connecting;
+
+        const chat = state.chats.find((chat) => chat.id === action.chatId);
+
+        if (!chat) {
+          throw new Error(`Chat not found: ${action.chatId}`);
+        }
+
+        const messages = chatMessagesJson(chat);
+
+        messages.push({
+          role: 'user',
+          text: action.message,
+        });
+
+        draft.response = allocAppResponse(
+          {
+            params: {
+              messages,
+              ...JSON.parse(draft.params),
+            },
+          },
+          {
+            requestId: uuidv4(),
+            chatId: chat.id,
+            message: {
+              role: 'user',
+              content: action.message,
+            },
+            reply: {
+              role: 'assistant',
+              content: '',
+            },
+          },
+        );
+      });
+    case 'REQUEST_CONNECTED':
+      return produce(state, (draft) => {
+        draft.runState = RunState.Generating;
+        draft.response!.sseChannel = action.sseChannel;
+      });
+    case 'RECEIVE_FRAME':
+      return produce(state, (draft) => {
+        appResponseReducer(draft.response!, action);
+
+        if (action.frame.type === 'done') {
+          // close out chat turn
+
+          if (draft.response!.chatTurn) {
+            const chatTurn = draft.response!.chatTurn;
+            const chat = draft.chats.find(
+              (chat) => chat.id === chatTurn.chatId,
+            );
+
+            if (chat) {
+              chat.turns.push(draft.response!.chatTurn);
+            } else {
+              console.error('chat not found when appending chat turn');
+            }
+
+            draft.response!.chatTurn = null;
+          }
+
+          draft.runState = RunState.Ready;
+        }
+
+        if (action.frame.type === 'error') {
+          draft.runState = RunState.Error;
+          draft.response!.sseChannel?.close();
+          draft.response!.sseChannel = null;
+        }
+      });
+    case 'CREATE_CHAT':
+      return produce(state, (draft) => {
+        draft.chats.push({
+          id: action.id,
+          name: action.name,
+          turns: [],
+          runState: RunState.Ready,
+        });
+      });
+    case 'RENAME_CHAT':
+      return produce(state, (draft) => {
+        const chat = draft.chats.find((chat) => chat.id === action.chatId);
+        if (chat) {
+          chat.name = action.name;
+        }
+      });
+    case 'CLEAR_OUTPUT':
+      return produce(state, (draft) => {
+        draft.response = null;
+      });
+    case 'SET_PARAMS':
+      return produce(state, (draft) => {
+        draft.params = action.params;
+      });
+  }
+
+  throw new Error(`Unknown action: ${action.type}`);
 }
 
 // A hook used to manage state for a client that
 // communicates with a Mixlayer app.
-export function useAppClient(): AppClientState {
-  const [params, setParams] = useState('{\n}');
-  const [runState, setRunState] = useState(RunState.Ready);
-  const [outputParts, setOutputParts] = useState<OutputPart[]>([]);
-  const [streams, setStreams] = useState<string[]>([]);
-  const [consoleOutput, setConsoleOutput] = useState<string>('');
-  const [sseChannel, setSseChannel] = useState<SSE | null>(null);
-  const [chats, setChats] = useState<MxlChat[]>([]);
-  const [currentChatTurn, setCurrentChatTurn] = useState<MxlChatTurn | null>(
-    null,
-  );
+export function useAppClient(): UseAppClient {
+  const [state, dispatch] = useReducer(appClientReducer, {
+    runState: RunState.Ready,
+    response: null,
+    params: '{\n}',
+    chats: [],
+  });
 
-  // Add a ref to track the latest currentChatTurn
-  const currentChatTurnRef = useRef<MxlChatTurn | null>(null);
-
-  // Keep the ref in sync with the state
   useEffect(() => {
-    currentChatTurnRef.current = currentChatTurn;
-  }, [currentChatTurn]);
-
-  // Move clearOutput declaration before it's used
-  const clearOutput = useCallback(() => {
-    setStreams([]);
-    setOutputParts([]);
-    setConsoleOutput('');
-  }, []);
-
-  const createNewChat = useCallback(() => {
-    const id = uuidv4();
-    setChats((prev) => [
-      ...prev,
-      {
-        id,
-        name: 'Untitled Chat',
-        runState: RunState.Ready,
-        turns: [],
-      },
-    ]);
-
-    return id;
-  }, []);
-
-  const onSseStreamFrame = useCallback(
-    (reply: any, done: boolean): OutputPart | null => {
-      if (done) {
-        setRunState(RunState.Ready);
-        setSseChannel(null);
-      }
-
-      if (reply.stream !== undefined) {
-        setStreams((prev) => {
-          const stream = reply.stream + '';
-          if (prev.indexOf(stream) === -1) {
-            return [...prev, stream];
-          }
-          return prev;
-        });
-      }
-
-      if (
-        reply.event &&
-        (reply.event === 'sys.stdout' || reply.event === 'sys.stderr')
-      ) {
-        setConsoleOutput((prev) => prev + reply.text);
-        return null;
-      }
-
-      if (reply.error) {
-        let nextOutputPart = {
-          message: reply.error as string,
-          type: 'error',
-          stream: reply.stream + '',
-        } as ErrorOutputPart;
-        setOutputParts((prev) => [...prev, nextOutputPart]);
-        return nextOutputPart;
-      } else if (reply.text) {
-        let nextOutputPart = {
-          text: reply.text as string,
-          hidden: reply.hidden as boolean,
-          stream: reply.stream + '',
-          type: 'text',
-        } as TextOutputPart;
-        setOutputParts((prev) => [...prev, nextOutputPart]);
-        return nextOutputPart;
-      } else {
-        return null;
-      }
-    },
-    [setStreams, setOutputParts, setConsoleOutput, setRunState, setSseChannel],
-  );
-
-  const appendOutputToChatTurn = useCallback(
-    (part: OutputPart | null, done: boolean) => {
-      console.log(
-        'appendOutputToChatTurn, done = ',
-        done,
-        currentChatTurnRef.current,
-      );
-
-      // Use the ref to access the latest value
-      if (done && currentChatTurnRef.current) {
-        currentChatTurnRef.current.reply.content +=
-          part?.type === 'text' ? part.text : '';
-
-        const currentChat = chats.find(
-          (chat) => chat.id === currentChatTurnRef.current!.chatId,
-        );
-
-        if (currentChat) {
-          const nextChat = {
-            ...currentChat,
-            turns: [...currentChat.turns, currentChatTurnRef.current!],
-          };
-
-          console.log('nextChat = ', nextChat);
-
-          setChats((prevChats) => {
-            const otherChats = prevChats.filter(
-              (chat) => chat.id !== currentChat.id,
-            );
-            console.log('nextChat = ', nextChat);
-            return [...otherChats, nextChat];
-          });
-
-          setCurrentChatTurn(null);
-
-          console.log('appending to chat', currentChat.id);
-        } else {
-          console.error('chat not found when appending turn');
-        }
-
-        return;
-      }
-
-      if (part !== null) {
-        setCurrentChatTurn((prev) => {
-          if (!prev) {
-            return null;
-          }
-
-          if (part.type === 'text' && !part.hidden) {
-            console.log(`appending ${part.text}`);
-            return {
-              ...prev,
-              reply: {
-                ...prev.reply,
-                content: prev.reply.content + part.text,
-              },
-            };
-          } else {
-            return prev;
-          }
-        });
-      }
-    },
-    [chats], // Keep only chats in the dependency array
-  );
-
-  const sendChatMessage = useCallback(
-    (chatId: string, message: string) => {
-      console.log('onChatSendClick', chatId, message);
-
-      if (sseChannel !== null) {
-        //TODO toast an error
-        console.error('request already in progress');
-        return;
-      }
-
-      clearOutput();
-
-      const chat = chats.find((chat) => chat.id === chatId);
-
-      if (!chat) {
-        console.error('chat not found');
-        return;
-      }
-
-      const messages = chatMessagesJson(chat);
-      messages.push({
-        role: 'user',
-        text: message,
-      });
-
-      const turn = {
-        requestId: '1',
-        chatId: chat.id,
-        message: {
-          role: 'user',
-          content: message,
-        },
-        reply: {
-          role: 'assistant',
-          content: '',
-        },
-      };
-
-      setRunState(RunState.Generating);
-      setCurrentChatTurn(turn);
-      // The ref will be updated via the useEffect
-
-      const paramsJson = JSON.parse(params);
-
-      if (typeof paramsJson !== 'object') {
-        throw new Error('params must be an object');
-      }
-
-      const sse = connect(
-        RUN_URL,
-        {
-          showHidden: true,
-          params: {
-            messages,
-            ...paramsJson,
-          },
-        },
-        (part, done) => {
-          console.log('onSseStreamFrame, done = ', done);
-          let outputPart = onSseStreamFrame(part, done);
-          appendOutputToChatTurn(outputPart, done);
-        },
-        (error) => {
-          setRunState(RunState.Error);
-          console.error(error);
-        },
-      );
-
-      setSseChannel(sse);
-    },
-    [
-      chats,
-      params,
-      sseChannel,
-      clearOutput,
-      onSseStreamFrame,
-      appendOutputToChatTurn,
-    ],
-  );
-
-  const sendRequest = useCallback(() => {
-    if (sseChannel !== null) {
-      //TODO toast an error
-      console.error('request already in progress');
+    if (state.runState !== RunState.Connecting) {
       return;
     }
 
-    clearOutput();
-    setRunState(RunState.Generating);
-
-    const paramsJson = params === '' ? {} : JSON.parse(params);
-
-    if (typeof paramsJson !== 'object') {
-      throw new Error('params must be an object');
+    if (state.response === null) {
+      throw new Error(
+        'state error: could not start request, no response allocated.',
+      );
     }
 
-    const sse = connect(
-      RUN_URL,
-      {
-        showHidden: true,
-        params: paramsJson,
-      },
-      onSseStreamFrame,
-      (error) => {
-        setRunState(RunState.Error);
-        console.error(error);
-      },
-    );
+    const body = state.response.requestBody;
 
-    setSseChannel(sse);
-  }, [params, sseChannel]);
+    const sse = connectStream(RUN_URL, body, (frame) => {
+      dispatch({ type: 'RECEIVE_FRAME', frame });
+    });
 
-  const stopRequest = useCallback(() => {
-    sseChannel?.close();
-    setSseChannel(null);
-    setRunState(RunState.Ready);
-  }, [sseChannel]);
-
-  const renameChat = useCallback(
-    (chatId: string, name: string) => {
-      setChats((prevChats) =>
-        prevChats.map((chat) =>
-          chat.id === chatId ? { ...chat, name } : chat,
-        ),
-      );
-    },
-    [chats],
-  );
+    dispatch({ type: 'REQUEST_CONNECTED', sseChannel: sse });
+  }, [state]);
 
   return {
-    runState,
-    outputParts,
-    streams,
-    consoleOutput,
-    chats,
-    currentChatTurn,
-    params,
-    clearOutput,
-    setParams,
-    sendRequest,
-    sendChatMessage,
-    createNewChat,
-    renameChat,
-    stopRequest,
+    state,
+    clearOutput: () => {
+      dispatch({ type: 'CLEAR_OUTPUT' });
+    },
+    setParams: (params: string) => {
+      dispatch({ type: 'SET_PARAMS', params });
+    },
+    sendRequest: () => {
+      dispatch({ type: 'BEGIN_APP_REQUEST' });
+    },
+    stopRequest: () => {
+      dispatch({ type: 'STOP_REQUEST' });
+    },
+    sendChatMessage: (chatId: string, message: string) => {
+      dispatch({ type: 'BEGIN_APP_CHAT_REQUEST', chatId, message });
+    },
+    createNewChat: (name: string | null) => {
+      const id = uuidv4();
+      dispatch({ type: 'CREATE_CHAT', id, name: name || 'Untitled Chat' });
+    },
+    renameChat: (chatId: string, name: string) => {
+      dispatch({ type: 'RENAME_CHAT', chatId, name });
+    },
   };
 }

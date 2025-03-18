@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { OverlayDropdownMenu } from './overlay-menu';
 import { MxlChat } from '@/lib/request';
 import { useAppClientState } from './developer-tab';
+import { useAppClient } from '@/hooks/use-app-client';
 
 export function OutputPane(props: {
   onCloseClick?: () => void;
@@ -15,7 +16,16 @@ export function OutputPane(props: {
   const outputDiv = useRef<HTMLDivElement>(null);
   const [selectedStream, setSelectedStream] = useState('0');
   const [showHiddenTokens, setShowHiddenTokens] = useState(false);
-  const { streams, chats, outputParts, createNewChat } = useAppClientState();
+  // const { state: { response: { streams, chats, outputParts }, createNewChat } = useAppClientState();
+  const {
+    state: { chats, response },
+    createNewChat,
+  } = useAppClientState();
+
+  const { streams, outputParts } = response || {
+    streams: [],
+    outputParts: [],
+  };
 
   useEffect(() => {
     const el = outputDiv.current;
@@ -45,7 +55,7 @@ export function OutputPane(props: {
           showHiddenTokens={showHiddenTokens}
           setShowHiddenTokens={setShowHiddenTokens}
           onOutputCopyClick={copyOutputToClipboard}
-          onNewChatClick={createNewChat}
+          onNewChatClick={() => createNewChat(null)}
           {...props}
         />
       </div>

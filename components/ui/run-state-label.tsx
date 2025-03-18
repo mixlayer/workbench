@@ -1,4 +1,3 @@
-import React from 'react';
 import { RunState } from '../../lib/utils';
 
 export function RunStateLabel(props: { state: RunState }) {
@@ -12,6 +11,11 @@ export function RunStateLabel(props: { state: RunState }) {
       dotCls = 'bg-green-500';
       text = 'Ready';
       break;
+    case RunState.Connecting:
+      textCls = 'text-gray-800';
+      dotCls = 'bg-yellow-500';
+      text = 'Connecting';
+      break;
     case RunState.Generating:
       textCls =
         'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
@@ -24,7 +28,7 @@ export function RunStateLabel(props: { state: RunState }) {
       text = 'Error';
       break;
     default:
-      throw 'unreachable';
+      throw `state unrecognized: ${props.state}`;
   }
 
   return (

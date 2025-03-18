@@ -10,8 +10,8 @@ export interface MxlRequestHistory {
 }
 
 export interface MxlChat {
+  id: string;
   name: string;
-  runState: RunState;
   turns: MxlChatTurn[];
 }
 

@@ -16,14 +16,16 @@ export function ChatPane(props: {
   const [autoscroll, setAutoscroll] = useState(true);
 
   const {
-    chats,
-    runState,
-    currentChatTurn,
-    sendChatMessage,
+    state: { runState, chats, response },
     createNewChat,
+    sendChatMessage,
     stopRequest,
     renameChat,
   } = useAppClientState();
+
+  const { chatTurn: currentChatTurn } = response || {
+    currentChatTurn: null,
+  };
 
   useEffect(() => {
     if (!chatMessagesDiv.current || !autoscroll) return;
@@ -72,7 +74,7 @@ export function ChatPane(props: {
           selectedStream={''}
           showHiddenTokens={false}
           chats={chats}
-          onNewChatClick={createNewChat}
+          onNewChatClick={() => createNewChat(null)}
           {...props}
         />
       </div>

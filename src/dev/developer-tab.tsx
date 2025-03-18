@@ -9,25 +9,9 @@ import { Console } from './console';
 import { MxlChat, MxlChatTurn } from '@/lib/request';
 import { RunStateLabel } from '@/components/ui/run-state-label';
 import { RunStopButton } from '@/components/ui/run-stop-button';
-import { useAppClient } from '@/hooks/use-app-client';
+import { UseAppClient, useAppClient } from '@/hooks/use-app-client';
 
-//TODO clean up, use app client state iface instead
-export interface MixlayerClientContextState {
-  runState: RunState;
-  outputParts: OutputPart[];
-  streams: string[];
-  consoleOutput: string;
-  chats: MxlChat[];
-  currentChatTurn: MxlChatTurn | null;
-  sendChatMessage: (chatId: string, message: string) => void;
-  createNewChat: () => string;
-  renameChat: (chatId: string, name: string) => void;
-  stopRequest: () => void;
-}
-
-export const MixlayerClientContext = createContext<MixlayerClientContextState>(
-  null!,
-);
+export const MixlayerClientContext = createContext<UseAppClient>(null!);
 
 //TODO state management here is a mess, need to refactor
 export function DeveloperTab(props: { className?: string }) {
@@ -41,10 +25,10 @@ export function DeveloperTab(props: { className?: string }) {
             <Panel defaultSize={40} className="p-0.5 pr-1">
               <div className="pl-1 w-full h-full flex flex-col space-y-1">
                 <div className="flex space-x-1">
-                  <RunStateLabel state={appClient.runState} />
+                  <RunStateLabel state={appClient.state.runState} />
                   <div className="flex-1"></div>
                   <RunStopButton
-                    runState={appClient.runState}
+                    runState={appClient.state.runState}
                     onRunClick={appClient.sendRequest}
                     onStopClick={appClient.stopRequest}
                   />
@@ -61,13 +45,15 @@ export function DeveloperTab(props: { className?: string }) {
                     defaultSize={75}
                     className="rounded-xs bg-zinc-700 border border-gray-700"
                   >
-                    <Console output={appClient.consoleOutput} />
+                    <Console
+                      output={appClient.state.response?.consoleOutput || ''}
+                    />
                   </Panel>
                   <PanelResizeHandle className="py-0.5" />
                   <Panel>
                     <div className="rounded-xs border border-gray-200 h-full w-full">
                       <ParamsEditorPane
-                        params={appClient.params}
+                        params={appClient.state.params}
                         setParams={appClient.setParams}
                       />
                     </div>

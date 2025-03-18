@@ -302,3 +302,133 @@ export function connect(
 
   return sse;
 }
+
+export function connectStream(
+  url: string,
+  body: any,
+  onFrame: (frame: Frame) => void,
+): SSE {
+  let sse = new SSE(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    payload: JSON.stringify(body),
+  });
+
+  sse.addEventListener('message', (event: any) => {
+    let reply_json = event.data;
+    let reply: any = null;
+
+    try {
+      //TODO look into why SSE is dispatching empty strings
+      if (reply_json === '') {
+        return;
+      }
+
+      reply = JSON.parse(reply_json);
+      onFrame(parseFrame(reply));
+    } catch (e) {
+      console.error('error parsing json', reply_json, e);
+      onFrame({ type: 'error', error: 'error parsing json', stream: null });
+    }
+  });
+
+  sse.addEventListener('error', (event: any) => {
+    let error = event.data;
+    onFrame({
+      type: 'error',
+      error: `connection error: ${error}`,
+      stream: null,
+    });
+  });
+
+  sse.stream();
+
+  return sse;
+}
+
+function parseFrame(reply: any): Frame {
+  if (reply.event) {
+    if (reply.event === 'sys.stdout') {
+      return {
+        type: 'console',
+        stream: 'stdout',
+        output: reply.text,
+      };
+    } else if (reply.event === 'sys.stderr') {
+      return {
+        type: 'console',
+        stream: 'stderr',
+        output: reply.text,
+      };
+    } else {
+      //TODO handle stream open/close events
+      return {
+        type: 'unknown',
+        data: JSON.stringify(reply),
+      };
+    }
+  }
+
+  if (reply.done) {
+    return {
+      type: 'done',
+    };
+  }
+
+  if (reply.error) {
+    return {
+      type: 'error',
+      error: reply.error,
+      stream: reply.stream + '',
+    };
+  } else if (reply.text) {
+    return {
+      type: 'text',
+      hidden: reply.hidden,
+      text: reply.text,
+      stream: reply.stream + '',
+    };
+  } else {
+    return {
+      type: 'unknown',
+      data: JSON.stringify(reply),
+    };
+  }
+}
+
+export interface ConsoleFrame {
+  type: 'console';
+  stream: 'stdout' | 'stderr';
+  output: string;
+}
+
+export interface TextFrame {
+  type: 'text';
+  hidden: boolean;
+  text: string;
+  stream: string;
+}
+
+export interface ErrorFrame {
+  type: 'error';
+  error: string;
+  stream: string | null;
+}
+
+export interface UnknownFrame {
+  type: 'unknown';
+  data: string;
+}
+
+export interface DoneFrame {
+  type: 'done';
+}
+
+export type Frame =
+  | TextFrame
+  | ErrorFrame
+  | ConsoleFrame
+  | UnknownFrame
+  | DoneFrame;

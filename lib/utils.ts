@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export enum RunState {
   Ready,
+  Connecting,
   Queued,
   Generating,
   Error,
@@ -21,7 +22,7 @@ export interface TextOutputPart {
 
 export interface ErrorOutputPart {
   message: string;
-  stream: string;
+  stream: string | null;
   type: 'error';
 }
 
