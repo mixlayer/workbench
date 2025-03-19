@@ -21,7 +21,7 @@ export interface UseAppClient {
   sendRequest: () => void;
   stopRequest: () => void;
   sendChatMessage: (chatId: string, message: string) => void;
-  createNewChat: (name: string | null) => void;
+  createNewChat: (name: string | null) => string;
   renameChat: (chatId: string, name: string) => void;
 }
 
@@ -146,7 +146,7 @@ function appClientReducer(
       return produce(state, (draft) => {
         draft.runState = RunState.Connecting;
         draft.response = allocAppResponse(
-          { params: JSON.parse(draft.params) },
+          { showHidden: true, params: JSON.parse(draft.params) },
           null,
         );
       });
@@ -169,6 +169,7 @@ function appClientReducer(
 
         draft.response = allocAppResponse(
           {
+            showHidden: true,
             params: {
               messages,
               ...JSON.parse(draft.params),
@@ -309,6 +310,7 @@ export function useAppClient(): UseAppClient {
     createNewChat: (name: string | null) => {
       const id = uuidv4();
       dispatch({ type: 'CREATE_CHAT', id, name: name || 'Untitled Chat' });
+      return id;
     },
     renameChat: (chatId: string, name: string) => {
       dispatch({ type: 'RENAME_CHAT', chatId, name });

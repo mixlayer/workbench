@@ -9,7 +9,8 @@ import { useAppClientState } from './developer-tab';
 export function ChatPane(props: {
   onSplitClick: (direction: SplitDirection) => void;
   onCloseClick?: () => void;
-  onChatClick: (chat: MxlChat) => void;
+  onChatClick: (chatId: string) => void;
+  onStreamClick: (streamId: string) => void;
   chatId: string;
 }) {
   const chatMessagesDiv = useRef<HTMLDivElement>(null);
@@ -70,8 +71,7 @@ export function ChatPane(props: {
     <div className="relative h-full bg-white border border-gray-200 rounded-sm">
       <div className="absolute top-2 right-2 z-10">
         <OverlayDropdownMenu
-          streams={[]}
-          selectedStream={''}
+          streams={response?.streams || []}
           showHiddenTokens={false}
           chats={chats}
           onNewChatClick={() => createNewChat(null)}

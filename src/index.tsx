@@ -11,7 +11,7 @@ if (rootEl) {
   root.render(
     <React.StrictMode>
       <App />
-      <Toaster />
+      <Toaster position="bottom-right" />
     </React.StrictMode>,
   );
 }

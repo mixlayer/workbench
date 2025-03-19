@@ -1,7 +1,9 @@
 import {
   ChevronDownIcon,
   ClipboardIcon,
+  GitFork,
   MessageCircleIcon,
+  MessageCircleMoreIcon,
   MessageCirclePlusIcon,
   PanelBottomDashedIcon,
   PanelRightDashedIcon,
@@ -16,21 +18,21 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { MxlChat } from '@/lib/request';
 
 export function OverlayDropdownMenu(props: {
   streams: string[];
-  selectedStream: string;
-  setSelectedStream?: (stream: string) => void;
+  onStreamClick?: (stream: string) => void;
   onOutputCopyClick?: () => void;
   onSplitClick: (direction: SplitDirection) => void;
   onCloseClick?: () => void;
-  onNewChatClick?: () => void;
-  onChatClick?: (chat: MxlChat) => void;
+  onNewChatClick?: () => string;
+  onChatClick?: (chatId: string) => void;
   chats: MxlChat[];
   showHiddenTokens: boolean;
   setShowHiddenTokens?: (showHiddenTokens: boolean) => void;
@@ -81,50 +83,91 @@ export function OverlayDropdownMenu(props: {
             <div>Split down</div>
           </div>
         </DropdownMenuItem>
-        {props.onNewChatClick && (
-          <DropdownMenuItem onClick={props.onNewChatClick}>
-            <div className="flex flex-row items-center space-x-2">
-              <MessageCirclePlusIcon className="h-5 w-5 " />
-              <div>New Chat</div>
-            </div>
-          </DropdownMenuItem>
-        )}
-        {props.chats.map((chat: MxlChat) => (
-          <DropdownMenuItem
-            key={chat.id}
-            onClick={() => props.onChatClick?.(chat)}
-          >
-            <div className="flex flex-row items-center space-x-2">
-              <MessageCircleIcon className="h-5 w-5 " />
-              <div>{chat.name}</div>
-            </div>
-          </DropdownMenuItem>
-        ))}
 
-        {props.onCloseClick && (
-          <DropdownMenuItem onClick={props.onCloseClick}>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
             <div className="flex flex-row items-center space-x-2">
-              <XIcon className="h-5 w-5" />
-              <div>Close</div>
+              <MessageCircleMoreIcon className="h-4 w-4 text-gray-500" />
+              <div>Chats</div>
             </div>
-          </DropdownMenuItem>
-        )}
-        {props.streams.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Streams</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={props.selectedStream}
-              onValueChange={props.setSelectedStream}
-            >
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="min-w-42">
+              {props.onNewChatClick && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (props.onNewChatClick) {
+                      let chatId = props.onNewChatClick();
+
+                      if (chatId && props.onChatClick) {
+                        props.onChatClick(chatId);
+                      }
+                    }
+                  }}
+                >
+                  <div className="flex flex-row items-center space-x-2">
+                    <MessageCirclePlusIcon className="h-5 w-5 " />
+                    <div>New Chat</div>
+                  </div>
+                </DropdownMenuItem>
+              )}
+
+              {props.chats.length > 0 && <DropdownMenuSeparator />}
+
+              {props.chats.map((chat: MxlChat) => (
+                <DropdownMenuItem
+                  key={chat.id}
+                  onClick={() => props.onChatClick?.(chat.id)}
+                >
+                  <div className="flex flex-row items-center space-x-2">
+                    <MessageCircleIcon className="h-5 w-5 " />
+                    <div>{chat.name}</div>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <div className="flex flex-row items-center space-x-2">
+              <GitFork className="h-4 w-4 text-gray-500" />
+              <div>Streams</div>
+            </div>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="min-w-42">
+              {props.streams.length === 0 && (
+                <DropdownMenuItem disabled>No streams</DropdownMenuItem>
+              )}
               {props.streams.map((stream) => (
-                <DropdownMenuRadioItem key={stream} value={stream}>
+                <DropdownMenuItem
+                  key={stream}
+                  onClick={() => {
+                    if (props.onStreamClick) {
+                      props.onStreamClick(stream);
+                    }
+                  }}
+                >
                   <div className="flex flex-row items-center space-x-2">
                     <div>Stream {stream}</div>
                   </div>
-                </DropdownMenuRadioItem>
+                </DropdownMenuItem>
               ))}
-            </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
+        {props.onCloseClick && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={props.onCloseClick}>
+              <div className="flex flex-row items-center space-x-2">
+                <XIcon className="h-5 w-5" />
+                <div>Close</div>
+              </div>
+            </DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>

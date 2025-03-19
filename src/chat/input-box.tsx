@@ -21,6 +21,7 @@ function RunStopButton(props: {
   onSendClick: () => void;
   runState: RunState;
   className?: string;
+  disabled?: boolean;
 }) {
   if (
     props.runState === RunState.Generating ||
@@ -30,6 +31,7 @@ function RunStopButton(props: {
       <Button
         className={`h-8 shadow-none text-xs ${props.className}`}
         size="icon"
+        disabled={props.disabled}
         onClick={props.onStopClick}
       >
         <SquareIcon className="size-4" />
@@ -41,6 +43,7 @@ function RunStopButton(props: {
     <Button
       className="h-8 shadow-none text-xs"
       size="icon"
+      disabled={props.disabled}
       onClick={props.onSendClick}
     >
       <ArrowUpIcon className="size-4" />
@@ -64,6 +67,10 @@ export function InputBox(props: {
 
   const [message, setMessage] = useState('');
   const onSendClick = useCallback(() => {
+    if (message.trim() === '') {
+      return;
+    }
+
     onSend(message.trim());
     setMessage('');
   }, [message, onSend]);

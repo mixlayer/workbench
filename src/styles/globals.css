@@ -43,6 +43,7 @@
   --header-height: 52px;
   --input-min-height: 96px;
   --tw-prose-pre-bg: 'white';
+  --font-mono: 'Geist Mono Variable', monospace;
 }
 
 @utility prose {

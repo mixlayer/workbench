@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { OutputPane } from './output-pane';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ChatPane } from './chat-pane';
-import { MxlChat } from '@/lib/request';
 
 export interface OutputPaneContent {
   kind: 'stream';
@@ -11,7 +10,7 @@ export interface OutputPaneContent {
 
 export interface ChatPaneContent {
   kind: 'chat';
-  chat: MxlChat;
+  chatId: string;
 }
 
 export interface ContentPane {
@@ -86,16 +85,27 @@ export function SplittableOutputPane(props: { onCloseClick?: () => void }) {
     [layout],
   );
 
-  const onChatClick = (chat: MxlChat) => {
+  const onChatClick = (chatId: string) => {
     setLayout((old) => {
       if (old.kind === 'content') {
         return {
           kind: 'content',
           content: {
             kind: 'chat',
-            chat,
+            chatId,
           },
         };
+      }
+
+      return old;
+    });
+  };
+
+  const onStreamClick = (streamId: string) => {
+    setLayout((old) => {
+      console.log('onStreamClick', streamId);
+      if (old.kind === 'content') {
+        return { ...old, content: { kind: 'stream', stream: streamId } };
       }
 
       return old;
@@ -136,6 +146,7 @@ export function SplittableOutputPane(props: { onCloseClick?: () => void }) {
         onSplitClick={onSplitClick}
         onCloseClick={props.onCloseClick}
         onChatClick={onChatClick}
+        onStreamClick={onStreamClick}
       />
     );
   }
@@ -145,9 +156,11 @@ function ContentPane(props: {
   content: ContentPaneType;
   onSplitClick: (direction: SplitDirection) => void;
   onCloseClick?: () => void;
-  onChatClick: (chat: MxlChat) => void;
+  onChatClick: (chatId: string) => void;
+  onStreamClick: (streamId: string) => void;
 }) {
-  const { content, onSplitClick, onCloseClick, onChatClick } = props;
+  const { content, onStreamClick, onSplitClick, onCloseClick, onChatClick } =
+    props;
 
   if (content.kind === 'stream') {
     return (
@@ -155,6 +168,8 @@ function ContentPane(props: {
         onSplitClick={onSplitClick}
         onCloseClick={onCloseClick}
         onChatClick={onChatClick}
+        onStreamClick={onStreamClick}
+        selectedStream={content.stream || '0'}
       />
     );
   }
@@ -164,8 +179,9 @@ function ContentPane(props: {
       <ChatPane
         onSplitClick={onSplitClick}
         onCloseClick={props.onCloseClick}
-        chatId={content.chat.id}
+        chatId={content.chatId}
         onChatClick={onChatClick}
+        onStreamClick={onStreamClick}
       />
     );
   }

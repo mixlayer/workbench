@@ -4,16 +4,16 @@ import { MixlayerLogoMark } from '@/components/logos/MixlayerLogoMark';
 import { SplitDirection } from './splittable';
 import { toast } from 'sonner';
 import { OverlayDropdownMenu } from './overlay-menu';
-import { MxlChat } from '@/lib/request';
 import { useAppClientState } from './developer-tab';
 
 export function OutputPane(props: {
   onCloseClick?: () => void;
   onSplitClick: (direction: SplitDirection) => void;
-  onChatClick: (chat: MxlChat) => void;
+  onChatClick: (chatId: string) => void;
+  onStreamClick: (streamId: string) => void;
+  selectedStream: string;
 }) {
   const outputDiv = useRef<HTMLDivElement>(null);
-  const [selectedStream, setSelectedStream] = useState('0');
   const [showHiddenTokens, setShowHiddenTokens] = useState(false);
   // const { state: { response: { streams, chats, outputParts }, createNewChat } = useAppClientState();
   const {
@@ -40,7 +40,11 @@ export function OutputPane(props: {
       .join('');
 
     navigator.clipboard.writeText(output);
-    toast.success('Output copied to clipboard');
+    toast.success(
+      <div className="text-base font-mono ml-1">
+        Output copied to clipboard
+      </div>,
+    );
   }, [outputParts]);
 
   return (
@@ -49,8 +53,6 @@ export function OutputPane(props: {
         <OverlayDropdownMenu
           streams={streams}
           chats={chats}
-          selectedStream={selectedStream}
-          setSelectedStream={setSelectedStream}
           showHiddenTokens={showHiddenTokens}
           setShowHiddenTokens={setShowHiddenTokens}
           onOutputCopyClick={copyOutputToClipboard}
@@ -60,7 +62,7 @@ export function OutputPane(props: {
       </div>
 
       <div className="absolute bottom-2 right-2 font-mono text-gray-300 text-xs">
-        Stream {selectedStream}
+        Stream {props.selectedStream}
       </div>
 
       <div className="h-full overflow-scroll  p-4 pt-2" ref={outputDiv}>
@@ -76,7 +78,8 @@ export function OutputPane(props: {
           <div className="whitespace-pre-wrap font-mono text-sm leading-6">
             {outputParts
               .filter(
-                (part) => part.stream == selectedStream || part.type == 'error',
+                (part) =>
+                  part.stream == props.selectedStream || part.type == 'error',
               )
               .map((part, i) => (
                 <OutputFragment
