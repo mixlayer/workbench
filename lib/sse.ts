@@ -362,6 +362,12 @@ function parseFrame(reply: any): Frame {
         stream: 'stderr',
         output: reply.text,
       };
+    } else if (reply.event === 'sys.error') {
+      return {
+        type: 'error',
+        error: reply.error,
+        stream: null,
+      };
     } else {
       //TODO handle stream open/close events
       return {
