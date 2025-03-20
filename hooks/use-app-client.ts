@@ -23,6 +23,9 @@ export interface UseAppClient {
   sendChatMessage: (chatId: string, message: string) => void;
   createNewChat: (name: string | null) => string;
   renameChat: (chatId: string, name: string) => void;
+  deleteChat: (chatId: string) => void;
+  regenerateLastChatTurn: (chatId: string) => void;
+  deleteChatTurn: (chatId: string, requestId: string) => void;
 }
 
 interface AppResponse {
@@ -52,30 +55,17 @@ type AppResponseAction = {
 
 type AppClientAction =
   | AppResponseAction
-  | {
-      type: 'CLEAR_OUTPUT';
-    }
-  | {
-      type: 'SET_PARAMS';
-      params: string;
-    }
-  | {
-      type: 'BEGIN_APP_REQUEST';
-    }
-  | {
-      type: 'STOP_REQUEST';
-    }
-  | {
-      type: 'BEGIN_APP_CHAT_REQUEST';
-      chatId: string;
-      message: string;
-    }
-  | {
-      type: 'REQUEST_CONNECTED';
-      sseChannel: SSE;
-    }
+  | { type: 'CLEAR_OUTPUT' }
+  | { type: 'SET_PARAMS'; params: string }
+  | { type: 'BEGIN_APP_REQUEST' }
+  | { type: 'STOP_REQUEST' }
+  | { type: 'BEGIN_APP_CHAT_REQUEST'; chatId: string; message: string }
+  | { type: 'REQUEST_CONNECTED'; sseChannel: SSE }
   | { type: 'CREATE_CHAT'; id: string; name: string }
-  | { type: 'RENAME_CHAT'; chatId: string; name: string };
+  | { type: 'RENAME_CHAT'; chatId: string; name: string }
+  | { type: 'DELETE_CHAT'; chatId: string }
+  | { type: 'REGENERATE_LAST_CHAT_TURN'; chatId: string }
+  | { type: 'DELETE_CHAT_TURN'; chatId: string; turnId: string };
 
 function allocAppResponse(
   body: any,
@@ -176,7 +166,7 @@ function appClientReducer(
             },
           },
           {
-            requestId: uuidv4(),
+            turnId: uuidv4(),
             chatId: chat.id,
             message: {
               role: 'user',
@@ -257,6 +247,64 @@ function appClientReducer(
         draft.response!.sseChannel?.close();
         draft.response!.sseChannel = null;
       });
+    case 'DELETE_CHAT':
+      return produce(state, (draft) => {
+        draft.chats = draft.chats.filter((chat) => chat.id !== action.chatId);
+      });
+    case 'REGENERATE_LAST_CHAT_TURN':
+      return produce(state, (draft) => {
+        console.log('re-generating last chat turn', action.chatId);
+        const chat = draft.chats.find((chat) => chat.id === action.chatId);
+        if (chat) {
+          let lastTurn = chat.turns.pop();
+
+          if (lastTurn) {
+            draft.runState = RunState.Connecting;
+            const messages = chatMessagesJson(chat);
+
+            messages.push({
+              role: 'user',
+              text: lastTurn.message.content,
+            });
+
+            draft.response = allocAppResponse(
+              {
+                showHidden: true,
+                params: {
+                  messages,
+                  ...JSON.parse(draft.params),
+                },
+              },
+              {
+                turnId: uuidv4(),
+                chatId: chat.id,
+                message: {
+                  role: 'user',
+                  content: lastTurn.message.content,
+                },
+                reply: {
+                  role: 'assistant',
+                  content: '',
+                },
+              },
+            );
+          } else {
+            console.error('no last turn found when regenerating chat turn');
+          }
+        } else {
+          console.error('chat not found when regenerating last chat turn');
+        }
+      });
+    case 'DELETE_CHAT_TURN':
+      console.log('deleting chat turn', action.chatId, action.turnId);
+      return produce(state, (draft) => {
+        const chat = draft.chats.find((chat) => chat.id === action.chatId);
+        if (chat) {
+          chat.turns = chat.turns.filter(
+            (turn) => turn.turnId !== action.turnId,
+          );
+        }
+      });
   }
 }
 
@@ -314,6 +362,15 @@ export function useAppClient(): UseAppClient {
     },
     renameChat: (chatId: string, name: string) => {
       dispatch({ type: 'RENAME_CHAT', chatId, name });
+    },
+    deleteChat: (chatId: string) => {
+      dispatch({ type: 'DELETE_CHAT', chatId });
+    },
+    regenerateLastChatTurn: (chatId: string) => {
+      dispatch({ type: 'REGENERATE_LAST_CHAT_TURN', chatId });
+    },
+    deleteChatTurn: (chatId: string, turnId: string) => {
+      dispatch({ type: 'DELETE_CHAT_TURN', chatId, turnId });
     },
   };
 }

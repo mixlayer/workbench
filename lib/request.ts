@@ -16,7 +16,7 @@ export interface MxlChat {
 }
 
 export interface MxlChatTurn {
-  requestId: string;
+  turnId: string;
   message: MxlChatMessage;
   reply: MxlChatReply;
 }
@@ -43,7 +43,7 @@ export interface MxlChat {
 }
 
 export interface MxlChatTurn {
-  requestId: string;
+  turnId: string;
   chatId: string;
   message: MxlChatMessage;
   reply: MxlChatReply;
