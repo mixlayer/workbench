@@ -1,6 +1,9 @@
 <!doctype html>
 <html>
   <head>
+    <% if (process.env.NODE_ENV === 'production') { %>
+    <base href="/_workbench/" />
+    <% } %>
     <title>Workbench</title>
     <link
       href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"

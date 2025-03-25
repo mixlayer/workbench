@@ -4,18 +4,15 @@ import pluginTailwind from '@tailwindcss/postcss';
 
 export default defineConfig({
   plugins: [pluginReact()],
+  output: {
+    assetPrefix: './',
+  },
   html: {
     template: './static/index.html',
   },
   tools: {
     postcss: (opts, { addPlugins }) => {
       addPlugins(pluginTailwind);
-    },
-  },
-  performance: {
-    bundleAnalyze: {
-      analyzerMode: 'static',
-      reportFilename: 'stats.html',
     },
   },
 });
