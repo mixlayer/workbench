@@ -127,6 +127,25 @@ function appResponseReducer(
   }
 }
 
+function writeTurnToChat(draft: WritableDraft<AppClientState>) {
+  if (draft.response === null) {
+    return;
+  }
+
+  if (draft.response.chatTurn) {
+    const chatTurn = draft.response!.chatTurn;
+    const chat = draft.chats.find((chat) => chat.id === chatTurn.chatId);
+
+    if (chat) {
+      chat.turns.push(draft.response!.chatTurn);
+    } else {
+      console.error('chat not found when appending chat turn');
+    }
+
+    draft.response.chatTurn = null;
+  }
+}
+
 function appClientReducer(
   state: AppClientState,
   action: AppClientAction,
@@ -190,21 +209,7 @@ function appClientReducer(
 
         if (action.frame.type === 'done') {
           // close out chat turn
-
-          if (draft.response!.chatTurn) {
-            const chatTurn = draft.response!.chatTurn;
-            const chat = draft.chats.find(
-              (chat) => chat.id === chatTurn.chatId,
-            );
-
-            if (chat) {
-              chat.turns.push(draft.response!.chatTurn);
-            } else {
-              console.error('chat not found when appending chat turn');
-            }
-
-            draft.response!.chatTurn = null;
-          }
+          writeTurnToChat(draft);
 
           draft.runState = RunState.Ready;
         }
@@ -243,6 +248,7 @@ function appClientReducer(
       });
     case 'STOP_REQUEST':
       return produce(state, (draft) => {
+        writeTurnToChat(draft);
         draft.runState = RunState.Ready;
         draft.response!.sseChannel?.close();
         draft.response!.sseChannel = null;

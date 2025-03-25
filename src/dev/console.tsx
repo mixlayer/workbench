@@ -21,7 +21,7 @@ export function Console(props: { output: String }) {
 
   return (
     <div
-      className="h-full w-full overflow-y-auto p-2 text-gray-100 "
+      className="h-full overflow-scroll p-2 text-gray-100 "
       onScroll={onScroll}
       ref={outputDiv}
     >

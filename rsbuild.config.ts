@@ -12,4 +12,10 @@ export default defineConfig({
       addPlugins(pluginTailwind);
     },
   },
+  performance: {
+    bundleAnalyze: {
+      analyzerMode: 'static',
+      reportFilename: 'stats.html',
+    },
+  },
 });
