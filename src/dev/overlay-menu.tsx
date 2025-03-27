@@ -37,9 +37,6 @@ export function OverlayDropdownMenu(props: {
   showHiddenTokens: boolean;
   setShowHiddenTokens?: (showHiddenTokens: boolean) => void;
 }) {
-  // not sure if this side effect is a problem lol
-  props.streams.sort();
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

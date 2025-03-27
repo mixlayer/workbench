@@ -103,7 +103,11 @@ function appResponseReducer(
             draft.streams.push(action.frame.stream);
           }
 
-          if (!action.frame.hidden && draft.chatTurn) {
+          if (
+            !action.frame.hidden &&
+            draft.chatTurn &&
+            action.frame.stream === '0'
+          ) {
             draft.chatTurn.reply.content += action.frame.text;
           }
 
