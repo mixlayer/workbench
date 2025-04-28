@@ -303,6 +303,51 @@ export function connect(
   return sse;
 }
 
+export function connectMxlDbgStream(
+  url: string,
+  body: any,
+  onData: (data: any) => void,
+): SSE {
+  let sse = new SSE(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    payload: JSON.stringify(body),
+  });
+
+  sse.addEventListener('message', (event: any) => {
+    let reply_json = event.data;
+    let reply: any = null;
+
+    try {
+      //TODO look into why SSE is dispatching empty strings
+      if (reply_json === '') {
+        return;
+      }
+
+      reply = JSON.parse(reply_json);
+      onData(reply);
+    } catch (e) {
+      console.error('error parsing json', reply_json, e);
+      onData({ type: 'error', error: 'error parsing json', stream: null });
+    }
+  });
+
+  sse.addEventListener('error', (event: any) => {
+    let error = event.data;
+    onData({
+      type: 'error',
+      error: `connection error: ${error}`,
+      stream: null,
+    });
+  });
+
+  sse.stream();
+
+  return sse;
+}
+
 export function connectStream(
   url: string,
   body: any,
