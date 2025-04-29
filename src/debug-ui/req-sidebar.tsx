@@ -1,4 +1,3 @@
-import { cn } from '@/lib/utils';
 import type { HttpServerRequest } from '@/hooks/use-mixlayer-debug';
 import { RequestList } from './request-list';
 

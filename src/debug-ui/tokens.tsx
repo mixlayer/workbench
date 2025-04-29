@@ -1,4 +1,3 @@
-import { Clock, Timer } from 'lucide-react';
 import { useState } from 'react';
 import { Seq, SeqChunk } from '@/hooks/use-mixlayer-debug';
 import { Autoscroll } from '@/components/autoscroll';
