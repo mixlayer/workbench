@@ -2,7 +2,7 @@ import './styles/globals.css';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './app';
+import App from './App';
 import { Toaster } from '@/components/ui/sonner';
 
 const rootEl = document.getElementById('root');

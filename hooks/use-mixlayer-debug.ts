@@ -16,6 +16,7 @@ export interface SeqChunk {
 
 export interface Seq {
   id: string;
+  model: string | null;
   chunks: SeqChunk[];
   isOpen: boolean;
   openTs: number | null;
@@ -73,6 +74,7 @@ interface SeqBaseEvent extends BaseSseEvent {
 
 interface SeqOpenEvent extends SeqBaseEvent {
   event_subtype: 'seq_open';
+  model: string;
 }
 
 interface SeqCloseEvent extends SeqBaseEvent {
@@ -138,6 +140,7 @@ function findOrCreateSeq(
     );
     request.seqs[seqId] = {
       id: seqId,
+      model: null,
       chunks: [],
       isOpen: false, // Mark as not officially open yet
       openTs: null,
@@ -240,6 +243,7 @@ function mixlayerDebugReducer(
                 seq.isOpen = true;
                 seq.openTs = event.ts;
                 seq.closeTs = null; // Reset close time if re-opened
+                seq.model = event.model;
                 // seq.chunks = []; // Clear chunks on re-open? Assuming seq_id is unique per request.
                 break;
               case 'seq_chunk':

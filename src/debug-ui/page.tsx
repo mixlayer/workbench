@@ -15,7 +15,7 @@ export default function DebugUI() {
 
   const [selectedSeqId, setSelectedSeqId] = useState<string | null>(null);
 
-  const { state, connect } = useMixlayerDebug();
+  const { state, connect, disconnect } = useMixlayerDebug();
 
   const selectedRequest: HttpServerRequest | null = selectedRequestId
     ? state.requests[selectedRequestId]
@@ -27,8 +27,13 @@ export default function DebugUI() {
 
   useEffect(() => {
     if (!state.sseChannel) {
+      console.log('connecting to mxldbg', state.runState);
       connect();
     }
+
+    return () => {
+      disconnect();
+    };
   }, []);
 
   // auto-select first request if no request is selected
@@ -42,14 +47,16 @@ export default function DebugUI() {
 
   // auto-select first seq if no seq selected
   useEffect(() => {
-    if (selectedRequest && !selectedSeqId) {
-      const req = selectedRequest;
-      const firstSeq = Object.values(req.seqs)[0];
-      if (firstSeq) {
-        setSelectedSeqId(firstSeq.id);
+    if (selectedRequest) {
+      if (!selectedSeqId || !selectedRequest.seqs[selectedSeqId]) {
+        const req = selectedRequest;
+        const firstSeq = Object.values(req.seqs)[0];
+        if (firstSeq) {
+          setSelectedSeqId(firstSeq.id);
+        }
       }
     }
-  }, [selectedRequest, selectedSeqId]);
+  }, [selectedRequest?.seqs, selectedSeqId]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">

@@ -72,6 +72,33 @@ export function formatTime(date: Date): string {
   });
 }
 
+export function formatTimestamp(timestampMs: number): string {
+  const date = new Date(timestampMs);
+  const now = new Date();
+
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  } else {
+    return date.toLocaleString([], {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
+}
+
 export function getStateColor(state: string): string {
   switch (state) {
     case 'idle':
@@ -82,6 +109,19 @@ export function getStateColor(state: string): string {
       return 'bg-amber-500';
     case 'finished':
       return 'bg-green-500';
+    case 'error':
+      return 'bg-red-500';
+    default:
+      return 'bg-gray-400';
+  }
+}
+
+export function getOpenCloseColor(state: string): string {
+  switch (state) {
+    case 'open':
+      return 'bg-green-400';
+    case 'closed':
+      return 'bg-gray-400';
     case 'error':
       return 'bg-red-500';
     default:
