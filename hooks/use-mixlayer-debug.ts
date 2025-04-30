@@ -3,7 +3,7 @@ import { useEffect, useReducer, useRef } from 'react';
 import SSE, { connectMxlDbgStream } from '@/lib/sse'; // Assuming connectStream exists and works similarly
 import { RunState } from '@/lib/utils'; // Reusing RunState enum
 
-const DEBUG_URL = 'http://localhost:8484/_mxldbg'; // Assuming this is the correct URL
+const DEBUG_URL = '/_mxldbg'; // Assuming this is the correct URL
 
 // --- State Interfaces ---
 
